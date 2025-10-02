@@ -88,7 +88,7 @@ echo ""
 echo "✅ Deployment complete!"
 echo ""
 echo "🌐 API URL:"
-cd ../core
+cd ../../core
 terraform output notification_api_url
 echo ""
 echo "🔌 WebSocket URL:"
