@@ -3,6 +3,12 @@ variable "subscription_id" {
   type        = string
 }
 
+variable "github_repository" {
+  description = "GitHub repository in the format 'owner/repo' for federated identity credentials."
+  type        = string
+  default     = "bensincs/azure-project-bootstrap"
+}
+
 terraform {
   required_providers {
     azurerm = {
@@ -70,6 +76,47 @@ resource "azurerm_storage_container" "state" {
   name                  = "tfstate"
   storage_account_id    = azurerm_storage_account.state.id
   container_access_type = "private"
+}
+
+# User-assigned managed identity for GitHub Actions deployments
+resource "azurerm_user_assigned_identity" "github_actions" {
+  name                = "id-github-actions-deploy"
+  resource_group_name = azurerm_resource_group.state.name
+  location            = azurerm_resource_group.state.location
+}
+
+# Grant the identity access to manage Terraform state
+resource "azurerm_role_assignment" "github_actions_storage" {
+  scope                = azurerm_storage_account.state.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_user_assigned_identity.github_actions.principal_id
+}
+
+# Grant the identity Owner role on the subscription for deployments
+resource "azurerm_role_assignment" "github_actions_owner" {
+  scope                = "/subscriptions/${var.subscription_id}"
+  role_definition_name = "Owner"
+  principal_id         = azurerm_user_assigned_identity.github_actions.principal_id
+}
+
+# Federated identity credential for GitHub Actions on main branch
+resource "azurerm_federated_identity_credential" "github_actions_main" {
+  name                = "github-actions-main"
+  resource_group_name = azurerm_resource_group.state.name
+  parent_id           = azurerm_user_assigned_identity.github_actions.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.github_repository}:ref:refs/heads/main"
+}
+
+# Federated identity credential for GitHub Actions on pull requests
+resource "azurerm_federated_identity_credential" "github_actions_pr" {
+  name                = "github-actions-pr"
+  resource_group_name = azurerm_resource_group.state.name
+  parent_id           = azurerm_user_assigned_identity.github_actions.id
+  audience            = ["api://AzureADTokenExchange"]
+  issuer              = "https://token.actions.githubusercontent.com"
+  subject             = "repo:${var.github_repository}:pull_request"
 }
 
 # Create a backend config file for each stack/environment with unique state key
@@ -141,4 +188,15 @@ output "backend_configs" {
       environment  = local.backends[key].environment
     }
   }
+}
+
+output "github_actions_identity" {
+  description = "GitHub Actions managed identity details for configuring OIDC authentication"
+  value = {
+    client_id       = azurerm_user_assigned_identity.github_actions.client_id
+    tenant_id       = azurerm_user_assigned_identity.github_actions.tenant_id
+    subscription_id = var.subscription_id
+    principal_id    = azurerm_user_assigned_identity.github_actions.principal_id
+  }
+  sensitive = false
 }
