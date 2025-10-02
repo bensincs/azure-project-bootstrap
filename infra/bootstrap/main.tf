@@ -23,6 +23,10 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.0"
     }
+    github = {
+      source  = "integrations/github"
+      version = "~> 6.0"
+    }
   }
 }
 
@@ -32,9 +36,18 @@ provider "azurerm" {
   storage_use_azuread = true
 }
 
+provider "github" {
+  owner = split("/", var.github_repository)[0]
+  # Uses GITHUB_TOKEN environment variable automatically from gh CLI
+}
+
 locals {
   location            = "uaenorth"
   resource_group_name = "rg-terraform-state"
+
+  # Parse repository owner and name
+  github_owner = split("/", var.github_repository)[0]
+  github_repo  = split("/", var.github_repository)[1]
 
   # Define stacks and their environments
   # Structure: stack/environment => configuration details
@@ -117,6 +130,25 @@ resource "azurerm_federated_identity_credential" "github_actions_pr" {
   audience            = ["api://AzureADTokenExchange"]
   issuer              = "https://token.actions.githubusercontent.com"
   subject             = "repo:${var.github_repository}:pull_request"
+}
+
+# Create GitHub repository secrets for OIDC authentication
+resource "github_actions_secret" "azure_client_id" {
+  repository      = local.github_repo
+  secret_name     = "AZURE_CLIENT_ID"
+  plaintext_value = azurerm_user_assigned_identity.github_actions.client_id
+}
+
+resource "github_actions_secret" "azure_tenant_id" {
+  repository      = local.github_repo
+  secret_name     = "AZURE_TENANT_ID"
+  plaintext_value = azurerm_user_assigned_identity.github_actions.tenant_id
+}
+
+resource "github_actions_secret" "azure_subscription_id" {
+  repository      = local.github_repo
+  secret_name     = "AZURE_SUBSCRIPTION_ID"
+  plaintext_value = var.subscription_id
 }
 
 # Create a backend config file for each stack/environment with unique state key
