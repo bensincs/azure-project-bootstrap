@@ -58,3 +58,23 @@ output "notification_api_websocket_url" {
   value       = "wss://${azurerm_container_app.notification_service.latest_revision_fqdn}/ws"
 }
 
+# Azure Front Door Outputs
+output "frontdoor_endpoint_hostname" {
+  description = "Azure Front Door endpoint hostname"
+  value       = azurerm_cdn_frontdoor_endpoint.core.host_name
+}
+
+output "frontdoor_endpoint_url" {
+  description = "Full URL to access the application via Azure Front Door"
+  value       = "https://${azurerm_cdn_frontdoor_endpoint.core.host_name}"
+}
+
+output "frontdoor_profile_name" {
+  description = "Name of the Azure Front Door profile"
+  value       = azurerm_cdn_frontdoor_profile.core.name
+}
+
+output "frontdoor_endpoint_name" {
+  description = "Name of the Azure Front Door endpoint"
+  value       = azurerm_cdn_frontdoor_endpoint.core.name
+}
