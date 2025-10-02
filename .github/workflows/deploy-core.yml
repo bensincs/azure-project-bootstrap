@@ -53,6 +53,14 @@ jobs:
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
           subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
 
+      # Set Terraform AzureRM provider environment variables
+      # These tell Terraform to use OIDC authentication instead of Azure CLI
+      - name: Set Terraform Environment Variables
+        run: |
+          echo "Setting Terraform AzureRM environment variables..."
+          echo "ARM_USE_OIDC=true" >> $GITHUB_ENV
+          echo "ARM_USE_CLI=false" >> $GITHUB_ENV
+
       - name: Terraform Format Check
         id: fmt
         run: terraform fmt -check -recursive
