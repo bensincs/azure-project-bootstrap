@@ -8,7 +8,7 @@ Creates a shared Azure Storage backend for Terraform state and sets up GitHub Ac
 - Resource group: `rg-terraform-state`
 - Storage account with random suffix (e.g., `sttfstate12345678`)
 - Storage container: `tfstate`
-- Managed identity: `id-github-actions-deploy` with:
+- Service principal: `github-actions-deploy` with:
   - Owner role on subscription
   - Storage Blob Data Contributor on state storage
   - Federated credentials for GitHub Actions (main branch + PRs)
@@ -57,7 +57,7 @@ terraform apply \
 
 That's it! The bootstrap will:
 1. Create the Azure backend infrastructure
-2. Create the managed identity with all permissions
+2. Create the service principal with all permissions
 3. Set up federated credentials for GitHub Actions
 4. Generate backend config files for your stacks
 5. Automatically create GitHub secrets for OIDC auth

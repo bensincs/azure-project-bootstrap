@@ -15,6 +15,10 @@ terraform {
       source  = "hashicorp/azurerm"
       version = "~> 3.0"
     }
+    azuread = {
+      source  = "hashicorp/azuread"
+      version = "~> 2.0"
+    }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.0"
@@ -91,58 +95,62 @@ resource "azurerm_storage_container" "state" {
   container_access_type = "private"
 }
 
-# User-assigned managed identity for GitHub Actions deployments
-resource "azurerm_user_assigned_identity" "github_actions" {
-  name                = "id-github-actions-deploy"
-  resource_group_name = azurerm_resource_group.state.name
-  location            = azurerm_resource_group.state.location
+# Data source to get current tenant ID
+data "azuread_client_config" "current" {}
+
+# Azure AD Application for GitHub Actions
+resource "azuread_application" "github_actions" {
+  display_name = "github-actions-deploy"
 }
 
-# Grant the identity access to manage Terraform state
+# Service Principal for the application
+resource "azuread_service_principal" "github_actions" {
+  client_id = azuread_application.github_actions.client_id
+}
+
+# Grant the service principal access to manage Terraform state
 resource "azurerm_role_assignment" "github_actions_storage" {
   scope                = azurerm_storage_account.state.id
   role_definition_name = "Storage Blob Data Contributor"
-  principal_id         = azurerm_user_assigned_identity.github_actions.principal_id
+  principal_id         = azuread_service_principal.github_actions.object_id
 }
 
-# Grant the identity Owner role on the subscription for deployments
+# Grant the service principal Owner role on the subscription for deployments
 resource "azurerm_role_assignment" "github_actions_owner" {
   scope                = "/subscriptions/${var.subscription_id}"
   role_definition_name = "Owner"
-  principal_id         = azurerm_user_assigned_identity.github_actions.principal_id
+  principal_id         = azuread_service_principal.github_actions.object_id
 }
 
 # Federated identity credential for GitHub Actions on main branch
-resource "azurerm_federated_identity_credential" "github_actions_main" {
-  name                = "github-actions-main"
-  resource_group_name = azurerm_resource_group.state.name
-  parent_id           = azurerm_user_assigned_identity.github_actions.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${var.github_repository}:ref:refs/heads/main"
+resource "azuread_application_federated_identity_credential" "github_actions_main" {
+  application_id = azuread_application.github_actions.id
+  display_name   = "github-actions-main"
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  subject        = "repo:${var.github_repository}:ref:refs/heads/main"
 }
 
 # Federated identity credential for GitHub Actions on pull requests
-resource "azurerm_federated_identity_credential" "github_actions_pr" {
-  name                = "github-actions-pr"
-  resource_group_name = azurerm_resource_group.state.name
-  parent_id           = azurerm_user_assigned_identity.github_actions.id
-  audience            = ["api://AzureADTokenExchange"]
-  issuer              = "https://token.actions.githubusercontent.com"
-  subject             = "repo:${var.github_repository}:pull_request"
+resource "azuread_application_federated_identity_credential" "github_actions_pr" {
+  application_id = azuread_application.github_actions.id
+  display_name   = "github-actions-pr"
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  subject        = "repo:${var.github_repository}:pull_request"
 }
 
 # Create GitHub repository secrets for OIDC authentication
 resource "github_actions_secret" "azure_client_id" {
   repository      = local.github_repo
   secret_name     = "AZURE_CLIENT_ID"
-  plaintext_value = azurerm_user_assigned_identity.github_actions.client_id
+  plaintext_value = azuread_application.github_actions.client_id
 }
 
 resource "github_actions_secret" "azure_tenant_id" {
   repository      = local.github_repo
   secret_name     = "AZURE_TENANT_ID"
-  plaintext_value = azurerm_user_assigned_identity.github_actions.tenant_id
+  plaintext_value = data.azuread_client_config.current.tenant_id
 }
 
 resource "github_actions_secret" "azure_subscription_id" {
@@ -223,12 +231,12 @@ output "backend_configs" {
 }
 
 output "github_actions_identity" {
-  description = "GitHub Actions managed identity details for configuring OIDC authentication"
+  description = "GitHub Actions service principal details for configuring OIDC authentication"
   value = {
-    client_id       = azurerm_user_assigned_identity.github_actions.client_id
-    tenant_id       = azurerm_user_assigned_identity.github_actions.tenant_id
+    client_id       = azuread_application.github_actions.client_id
+    tenant_id       = data.azuread_client_config.current.tenant_id
     subscription_id = var.subscription_id
-    principal_id    = azurerm_user_assigned_identity.github_actions.principal_id
+    object_id       = azuread_service_principal.github_actions.object_id
   }
   sensitive = false
 }
