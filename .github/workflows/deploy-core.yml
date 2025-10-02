@@ -58,8 +58,21 @@ jobs:
       - name: Set Terraform Environment Variables
         run: |
           echo "Setting Terraform AzureRM environment variables..."
+          echo "ARM_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
           echo "ARM_USE_OIDC=true" >> $GITHUB_ENV
           echo "ARM_USE_CLI=false" >> $GITHUB_ENV
+
+      - name: Verify Terraform Authentication Setup
+        run: |
+          echo "=== Terraform Authentication Environment ==="
+          echo "ARM_USE_OIDC: ${ARM_USE_OIDC:-not set}"
+          echo "ARM_USE_CLI: ${ARM_USE_CLI:-not set}"
+          echo "ARM_CLIENT_ID: ${ARM_CLIENT_ID:+***set***}"
+          echo "ARM_TENANT_ID: ${ARM_TENANT_ID:+***set***}"
+          echo "ARM_SUBSCRIPTION_ID: ${ARM_SUBSCRIPTION_ID:+***set***}"
+          echo "============================================"
 
       - name: Terraform Format Check
         id: fmt
