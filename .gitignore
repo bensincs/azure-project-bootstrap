@@ -16,7 +16,6 @@ build/
 *.tfstate
 *.tfstate.*
 .terraform/
-.terraform.lock.hcl
 
 # IDE
 .vscode/
