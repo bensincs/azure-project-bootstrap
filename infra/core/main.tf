@@ -174,12 +174,6 @@ resource "azurerm_container_app" "notification_service" {
       latest_revision = true
       percentage      = 100
     }
-
-    cors {
-      allowed_origins = ["*"]
-      allowed_methods = ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
-      allowed_headers = ["*"]
-    }
   }
 
   tags = local.common_tags
