@@ -66,6 +66,11 @@ locals {
       subscription_id = var.subscription_id
     }
   }
+
+  mcaps_tags = {
+    SecurityControl = "Ignore"
+    CostControl = "Ignore"
+  }
 }
 
 resource "random_string" "suffix" {
@@ -87,6 +92,8 @@ resource "azurerm_storage_account" "state" {
   account_replication_type        = "LRS"
   shared_access_key_enabled       = false
   allow_nested_items_to_be_public = false
+
+  tags = local.mcaps_tags
 }
 
 resource "azurerm_storage_container" "state" {

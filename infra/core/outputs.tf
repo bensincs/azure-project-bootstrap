@@ -58,6 +58,22 @@ output "notification_api_websocket_url" {
   value       = "wss://${azurerm_container_app.notification_service.latest_revision_fqdn}/ws"
 }
 
+# API Service Outputs
+output "api_service_name" {
+  description = "Name of the API Container App"
+  value       = azurerm_container_app.api_service.name
+}
+
+output "api_service_url" {
+  description = "Direct URL for the API service"
+  value       = "https://${azurerm_container_app.api_service.latest_revision_fqdn}"
+}
+
+output "api_service_fqdn" {
+  description = "FQDN of the API Container App"
+  value       = azurerm_container_app.api_service.latest_revision_fqdn
+}
+
 # Azure Front Door Outputs
 output "frontdoor_endpoint_hostname" {
   description = "Azure Front Door endpoint hostname"

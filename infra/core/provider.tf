@@ -40,4 +40,8 @@ locals {
       Stack       = "core"
     }
   )
+  mcaps_tags = {
+    SecurityControl = "Ignore"
+    CostControl = "Ignore"
+  }
 }

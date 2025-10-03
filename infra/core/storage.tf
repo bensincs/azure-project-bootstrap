@@ -13,7 +13,7 @@ resource "azurerm_storage_account" "static_web" {
   https_traffic_only_enabled      = true
   min_tls_version                 = "TLS1_2"
 
-  tags = local.common_tags
+  tags = merge(local.common_tags, local.mcaps_tags)
 }
 
 # Grant current user Storage Blob Data Contributor role on the storage account

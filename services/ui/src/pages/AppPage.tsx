@@ -1,4 +1,5 @@
 import { useState } from "react";
+import HelloWorld from "../components/HelloWorld";
 
 export default function AppPage() {
   const [message, setMessage] = useState("");
@@ -81,6 +82,9 @@ export default function AppPage() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-8">
+        {/* Hello World API Test */}
+        <HelloWorld />
+
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-xl font-semibold mb-4">Send Notification</h2>
 
