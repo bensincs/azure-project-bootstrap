@@ -306,7 +306,7 @@ curl $API_URL/api/hello
 ### Send a test notification (local):
 
 ```bash
-curl -X POST http://localhost:3001/api/notifications \
+curl -X POST http://localhost:3001/api/notifications/broadcast \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Test notification!",
@@ -320,7 +320,7 @@ curl -X POST http://localhost:3001/api/notifications \
 ```bash
 FRONTDOOR_URL=$(cd infra/core && terraform output -raw frontdoor_endpoint_url)
 
-curl -X POST $FRONTDOOR_URL/notifications/api/notifications \
+curl -X POST $FRONTDOOR_URL/notifications/api/notifications/broadcast \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Production notification!",
@@ -334,7 +334,7 @@ curl -X POST $FRONTDOOR_URL/notifications/api/notifications \
 ```bash
 API_URL=$(cd infra/core && terraform output -raw notification_api_url)
 
-curl -X POST $API_URL/api/notifications \
+curl -X POST $API_URL/api/notifications/broadcast \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Direct notification!",

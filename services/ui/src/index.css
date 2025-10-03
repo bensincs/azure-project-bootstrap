@@ -26,6 +26,30 @@
       opacity: 1;
     }
   }
+
+  @keyframes pulseSlow {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: scale(1) translateY(0px);
+    }
+    50% {
+      opacity: 0.65;
+      transform: scale(1.1) translateY(-8px);
+    }
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: 0% 50%;
+    }
+    50% {
+      background-position: 100% 50%;
+    }
+    100% {
+      background-position: 0% 50%;
+    }
+  }
 }
 
 /*
@@ -37,11 +61,133 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply min-h-screen bg-[#020617] text-slate-100 antialiased overflow-x-hidden;
+    font-family: "Space Grotesk", "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+      "Segoe UI", sans-serif;
+  }
+
+  code,
+  pre {
+    font-family: "JetBrains Mono", "SFMono-Regular", Menlo, Monaco, Consolas,
+      "Liberation Mono", "Courier New", monospace;
+  }
+
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
     border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@layer components {
+  .ui-panel {
+    @apply relative overflow-hidden rounded-3xl border border-white/10 bg-white/5
+      px-6 py-8 shadow-[0_20px_60px_rgba(15,23,42,0.55)] backdrop-blur-2xl;
+  }
+
+  .ui-panel::after {
+    content: "";
+    @apply pointer-events-none absolute inset-0 rounded-3xl;
+    background: radial-gradient(
+      circle at top left,
+      rgba(56, 189, 248, 0.15),
+      transparent 55%
+    ),
+      radial-gradient(
+        circle at bottom right,
+        rgba(14, 116, 144, 0.18),
+        transparent 45%
+      );
+    mix-blend-mode: screen;
+  }
+
+  .ui-panel-accent {
+    @apply relative overflow-hidden rounded-3xl border border-cyan-500/30 bg-cyan-500/10
+      px-6 py-8 shadow-[0_30px_80px_rgba(8,145,178,0.35)] backdrop-blur-3xl;
+  }
+
+  .ui-gradient-text {
+    background-image: linear-gradient(120deg, #60a5fa 0%, #a855f7 50%, #f472b6 100%);
+    background-clip: text;
+    color: transparent;
+  }
+
+  .ui-button-primary {
+    @apply relative inline-flex items-center justify-center overflow-hidden rounded-full
+      border border-cyan-500/60 px-6 py-3 text-sm font-semibold uppercase tracking-[0.2em]
+      text-cyan-100 transition;
+    background: linear-gradient(120deg, rgba(56, 189, 248, 0.25), transparent 60%);
+    box-shadow: 0 0 25px rgba(56, 189, 248, 0.25);
+  }
+
+  .ui-button-primary::after {
+    content: "";
+    @apply absolute inset-0 rounded-full opacity-0 transition;
+    background: linear-gradient(90deg, rgba(14, 165, 233, 0), rgba(14, 165, 233, 0.35), rgba(14, 165, 233, 0));
+  }
+
+  .ui-button-primary:hover::after {
+    opacity: 1;
+  }
+
+  .ui-button-secondary {
+    @apply inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-3 text-sm font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white;
+    background: rgba(148, 163, 184, 0.06);
+  }
+
+  .ui-button-plain {
+    @apply inline-flex items-center justify-center rounded-full bg-cyan-400/70 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 active:bg-cyan-200;
+    box-shadow: 0 10px 30px rgba(56, 189, 248, 0.35);
+  }
+
+  .ui-grid-lines {
+    background-image: linear-gradient(rgba(148, 163, 184, 0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(148, 163, 184, 0.08) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .ui-shimmer {
+    background-size: 280% 280%;
+    animation: shimmer 12s ease infinite;
+  }
+
+  .ui-aurora {
+    background: radial-gradient(circle at 20% 20%, rgba(99, 102, 241, 0.55), transparent 55%),
+      radial-gradient(circle at 80% 30%, rgba(14, 165, 233, 0.45), transparent 45%),
+      radial-gradient(circle at 50% 80%, rgba(244, 114, 182, 0.35), transparent 60%);
+  }
+}
+
+@layer utilities {
+  .shadow-neon {
+    box-shadow:
+      0 0 25px rgba(56, 189, 248, 0.35),
+      0 0 65px rgba(167, 139, 250, 0.25);
+  }
+
+  .ring-glow {
+    box-shadow:
+      inset 0 0 0 1px rgba(56, 189, 248, 0.4),
+      0 0 35px rgba(56, 189, 248, 0.35);
+  }
+
+  .glow-bar {
+    background: linear-gradient(90deg, rgba(56, 189, 248, 0) 0%, rgba(56, 189, 248, 0.5) 45%, rgba(14, 165, 233, 0) 100%);
+  }
+
+  .glass-divider {
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0) 0%, rgba(148, 163, 184, 0.35) 50%, rgba(148, 163, 184, 0) 100%);
+    height: 1px;
+  }
+
+  .pulse-slow {
+    animation: pulseSlow 10s ease-in-out infinite;
   }
 }

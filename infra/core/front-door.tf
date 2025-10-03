@@ -107,7 +107,7 @@ resource "azurerm_cdn_frontdoor_route" "notification_api" {
   cdn_frontdoor_origin_ids      = [azurerm_cdn_frontdoor_origin.notification_api.id]
 
   supported_protocols    = ["Http", "Https"]
-  patterns_to_match      = ["/notifications/*", "/ws"]
+  patterns_to_match      = ["/api/notifications/*", "/ws"]
   forwarding_protocol    = "HttpsOnly"
   link_to_default_domain = true
   https_redirect_enabled = true

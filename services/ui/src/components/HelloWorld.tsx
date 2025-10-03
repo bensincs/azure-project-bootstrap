@@ -62,85 +62,75 @@ export default function HelloWorld() {
     }
   };
 
-  return (
-    <div className="bg-white rounded-lg shadow p-6 mb-6">
-      <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-        <span>🚀</span>
-        .NET API Test
-      </h2>
+  const latestPayload = response ?? nameResponse;
+  const hasPayload = Boolean(latestPayload);
 
-      {/* Simple Hello Button */}
-      <div className="mb-4">
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-white">Check the API</h2>
+        <p className="mt-2 text-sm text-slate-400">
+          Issue a quick ping against the .NET backend and see the JSON surface instantly.
+        </p>
+      </div>
+
+      <div className="flex flex-wrap gap-3">
         <button
           onClick={fetchHello}
           disabled={loading}
-          className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+          className="inline-flex items-center rounded-full bg-white/10 px-4 py-2 text-sm font-medium text-white transition hover:bg-white/20 disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {loading ? "Loading..." : "Call /api/hello"}
+          {loading ? "Calling…" : "Call /api/hello"}
         </button>
       </div>
 
-      {/* Hello with Name Form */}
-      <form onSubmit={fetchHelloWithName} className="mb-4">
-        <div className="flex gap-2">
+      <form onSubmit={fetchHelloWithName} className="space-y-3">
+        <label htmlFor="hello-name" className="text-xs uppercase tracking-[0.3em] text-slate-500">
+          Personal handshake
+        </label>
+        <div className="flex flex-col gap-3 sm:flex-row">
           <input
+            id="hello-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Enter your name"
-            className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder="Enter a name"
+            className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/30"
           />
           <button
             type="submit"
             disabled={loading || !name.trim()}
-            className="bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center justify-center rounded-full bg-cyan-400/70 px-5 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {loading ? "Loading..." : "Say Hello"}
+            {loading ? "Sending…" : "Call /api/hello/:name"}
           </button>
         </div>
       </form>
 
-      {/* Error Display */}
       {error && (
-        <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
-          <p className="text-red-800 font-medium">Error:</p>
-          <p className="text-red-600 text-sm">{error}</p>
-          <p className="text-xs text-gray-500 mt-2">
-            Make sure the API is running at: {apiUrl}
+        <div className="rounded-2xl border border-rose-500/40 bg-rose-500/10 px-4 py-3 text-sm text-rose-200">
+          <p className="font-medium">Request failed</p>
+          <p className="mt-1 text-xs text-rose-100/80">{error}</p>
+        </div>
+      )}
+
+      <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-slate-200">
+        <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Latest response</p>
+        <div className="glass-divider my-4" />
+        {hasPayload ? (
+          <pre className="max-h-64 overflow-auto text-sm text-cyan-100">
+            {JSON.stringify(latestPayload, null, 2)}
+          </pre>
+        ) : (
+          <p className="text-sm text-slate-400">
+            Run either request above to view the JSON payload returned by the API.
           </p>
-        </div>
-      )}
-
-      {/* Response Display */}
-      {response && (
-        <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
-          <p className="text-green-800 font-medium mb-2">✅ Response:</p>
-          <div className="bg-white p-3 rounded border border-green-100">
-            <pre className="text-sm overflow-x-auto">
-              {JSON.stringify(response, null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {nameResponse && (
-        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <p className="text-blue-800 font-medium mb-2">👋 Response:</p>
-          <div className="bg-white p-3 rounded border border-blue-100">
-            <pre className="text-sm overflow-x-auto">
-              {JSON.stringify(nameResponse, null, 2)}
-            </pre>
-          </div>
-        </div>
-      )}
-
-      {/* API URL Info */}
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <p className="text-xs text-gray-500">
-          API URL:{" "}
-          <code className="bg-gray-100 px-2 py-1 rounded">{apiUrl}</code>
-        </p>
+        )}
       </div>
+
+      <p className="text-xs text-slate-500">
+        Base URL: <code className="font-mono text-cyan-200">{apiUrl}</code>
+      </p>
     </div>
   );
 }

@@ -24,7 +24,7 @@ The server will start on `http://localhost:3001`
 ### Endpoints
 
 - **WebSocket**: `ws://localhost:3001/ws`
-- **REST API**: `POST http://localhost:3001/api/notifications`
+- **REST API**: `POST http://localhost:3001/api/notifications/broadcast`
 - **Health Check**: `GET http://localhost:3001/health`
 
 ### Test with curl
@@ -32,7 +32,7 @@ The server will start on `http://localhost:3001`
 Send a notification:
 
 ```bash
-curl -X POST http://localhost:3001/api/notifications \
+curl -X POST http://localhost:3001/api/notifications/broadcast \
   -H "Content-Type: application/json" \
   -d '{
     "message": "Hello from the API!",
