@@ -1,39 +1,85 @@
 #!/bin/bash
 set -e
 
-# This script builds and deploys the UI to Azure Storage Static Website
-
 echo "🎨 Building and deploying UI..."
 
 # Get infrastructure outputs from Terraform
 cd ../../infra/core
-STORAGE_ACCOUNT=$(terraform output -raw storage_account_name)
+CONTAINER_REGISTRY=$(terraform output -raw container_registry_login_server)
+CONTAINER_APP_NAME="ca-core-ui-service-dev"
+RESOURCE_GROUP=$(terraform output -raw resource_group_name)
 WEBSITE_URL=$(terraform output -raw website_url)
-WS_URL=$(terraform output -raw notification_api_websocket_url)
 cd ../../services/ui
 
-echo "📦 Storage Account: $STORAGE_ACCOUNT"
+echo "📦 Container Registry: $CONTAINER_REGISTRY"
+echo "📦 Container App: $CONTAINER_APP_NAME"
+echo "📦 Resource Group: $RESOURCE_GROUP"
 echo "🌐 Website URL: $WEBSITE_URL"
-echo "🔌 WebSocket URL: $WS_URL"
 
-# Build the React app
-echo "🔨 Building React app..."
-yarn build
+# Build and push Docker image
+IMAGE_NAME="$CONTAINER_REGISTRY/ui-service"
+IMAGE_TAG="$(date +%Y%m%d-%H%M%S)"
+FULL_IMAGE="$IMAGE_NAME:$IMAGE_TAG"
 
-# Deploy to Azure Storage
-echo "📤 Uploading to Azure Storage..."
-az storage blob upload-batch \
-  --account-name $STORAGE_ACCOUNT \
-  --destination '$web' \
-  --source dist \
-  --auth-mode login \
-  --overwrite
+echo ""
+echo "� Building Docker image..."
+docker build --platform linux/amd64 -t "$FULL_IMAGE" -t "$IMAGE_NAME:latest" .
+
+echo ""
+echo "🔐 Logging in to ACR..."
+az acr login --name "${CONTAINER_REGISTRY%%.*}"
+
+echo ""
+echo "📤 Pushing image to ACR..."
+docker push "$FULL_IMAGE"
+docker push "$IMAGE_NAME:latest"
+
+echo ""
+echo "🚀 Updating Container App..."
+
+# Load environment variables from local .env if it exists
+ENV_VARS_ARG=""
+if [ -f ".env" ]; then
+  echo "📝 Loading environment variables from .env..."
+
+  # Read .env and build --set-env-vars argument
+  # Skip empty lines and comments
+  ENV_VARS=""
+  while IFS='=' read -r key value || [ -n "$key" ]; do
+    # Skip empty lines and comments
+    if [[ -z "$key" || "$key" =~ ^[[:space:]]*# ]]; then
+      continue
+    fi
+
+    # Trim whitespace
+    key=$(echo "$key" | xargs)
+    value=$(echo "$value" | xargs)
+
+    if [ -n "$key" ] && [ -n "$value" ]; then
+      if [ -z "$ENV_VARS" ]; then
+        ENV_VARS="$key=$value"
+      else
+        ENV_VARS="$ENV_VARS $key=$value"
+      fi
+      echo "  ✓ $key"
+    fi
+  done < .env
+
+  if [ -n "$ENV_VARS" ]; then
+    ENV_VARS_ARG="--set-env-vars $ENV_VARS"
+  fi
+else
+  echo "⚠️  No .env file found - deploying without environment variables"
+fi
+
+az containerapp update \
+  --name "$CONTAINER_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --image "$FULL_IMAGE" \
+  $ENV_VARS_ARG
 
 echo ""
 echo "✅ Deployment complete!"
 echo ""
 echo "🌐 Your site is live at:"
 echo "$WEBSITE_URL"
-echo ""
-echo "🔌 WebSocket connected to:"
-echo "$WS_URL"

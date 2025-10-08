@@ -1,10 +1,11 @@
 # Container Registry (for storing Docker images)
 resource "azurerm_container_registry" "core" {
-  name                = "acr${var.resource_name_prefix}${var.environment}${random_string.suffix.result}"
-  resource_group_name = azurerm_resource_group.core.name
-  location            = azurerm_resource_group.core.location
-  sku                 = "Basic"
-  admin_enabled       = true
+  name                          = "acr${var.resource_name_prefix}${var.environment}${random_string.suffix.result}"
+  resource_group_name           = azurerm_resource_group.core.name
+  location                      = azurerm_resource_group.core.location
+  sku                           = "Premium" # Required for private endpoints
+  admin_enabled                 = true
+  public_network_access_enabled = false # Private endpoint only - VPN required
 
   tags = local.common_tags
 }

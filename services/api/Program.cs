@@ -48,7 +48,7 @@ app.MapGet("/api/config", (IConfiguration config, IWebHostEnvironment env) => Re
     .WithOpenApi();
 
 // Health check endpoint
-app.MapGet("/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
+app.MapGet("/api/health", () => Results.Ok(new { status = "healthy", timestamp = DateTime.UtcNow }))
     .WithName("HealthCheck")
     .WithOpenApi();
 
@@ -80,7 +80,7 @@ app.MapGet("/", () => Results.Ok(new
     version = "1.0.0",
     endpoints = new[]
     {
-        "/health",
+        "/api/health",
         "/api/hello",
         "/api/hello/{name}",
         "/swagger"

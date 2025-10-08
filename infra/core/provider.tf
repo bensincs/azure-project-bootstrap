@@ -42,6 +42,6 @@ locals {
   )
   mcaps_tags = {
     SecurityControl = "Ignore"
-    CostControl = "Ignore"
+    CostControl     = "Ignore"
   }
 }
