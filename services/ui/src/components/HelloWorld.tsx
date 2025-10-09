@@ -21,13 +21,13 @@ export default function HelloWorld() {
   const [error, setError] = useState<string | null>(null);
 
   // Get API URL from environment or default to localhost
-  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
+  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
   const fetchHello = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${apiUrl}/api/hello`);
+      const res = await fetch(`${apiUrl}/hello`);
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       const data = await res.json();
       setResponse(data);
@@ -48,7 +48,7 @@ export default function HelloWorld() {
     setError(null);
     try {
       const res = await fetch(
-        `${apiUrl}/api/hello/${encodeURIComponent(name.trim())}`
+        `${apiUrl}/hello/${encodeURIComponent(name.trim())}`
       );
       if (!res.ok) throw new Error(`HTTP ${res.status}: ${res.statusText}`);
       const data = await res.json();
@@ -70,7 +70,8 @@ export default function HelloWorld() {
       <div>
         <h2 className="text-xl font-semibold text-white">Check the API</h2>
         <p className="mt-2 text-sm text-slate-400">
-          Issue a quick ping against the .NET backend and see the JSON surface instantly.
+          Issue a quick ping against the .NET backend and see the JSON surface
+          instantly.
         </p>
       </div>
 
@@ -85,7 +86,10 @@ export default function HelloWorld() {
       </div>
 
       <form onSubmit={fetchHelloWithName} className="space-y-3">
-        <label htmlFor="hello-name" className="text-xs uppercase tracking-[0.3em] text-slate-500">
+        <label
+          htmlFor="hello-name"
+          className="text-xs uppercase tracking-[0.3em] text-slate-500"
+        >
           Personal handshake
         </label>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -115,7 +119,9 @@ export default function HelloWorld() {
       )}
 
       <div className="rounded-2xl border border-white/10 bg-white/5 p-5 text-sm text-slate-200">
-        <p className="text-xs uppercase tracking-[0.3em] text-slate-500">Latest response</p>
+        <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+          Latest response
+        </p>
         <div className="glass-divider my-4" />
         {hasPayload ? (
           <pre className="max-h-64 overflow-auto text-sm text-cyan-100">
@@ -123,7 +129,8 @@ export default function HelloWorld() {
           </pre>
         ) : (
           <p className="text-sm text-slate-400">
-            Run either request above to view the JSON payload returned by the API.
+            Run either request above to view the JSON payload returned by the
+            API.
           </p>
         )}
       </div>
