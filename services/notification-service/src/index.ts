@@ -92,7 +92,7 @@ app.post("/api/broadcast", (req, res) => {
 });
 
 // Health check endpoint
-app.get("/health", (req, res) => {
+app.get("/api/health", (req, res) => {
   res.json({
     status: "ok",
     connectedClients: clients.size,

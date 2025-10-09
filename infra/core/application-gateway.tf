@@ -175,13 +175,14 @@ resource "azurerm_application_gateway" "core" {
 
       condition {
         variable    = "var_uri_path"
-        pattern     = "/notify/(.*)"
+        pattern     = "^/notify/(.*)$"
         ignore_case = true
       }
 
       url {
-        path    = "/api/{var_uri_path_1}"
-        reroute = false
+        path         = "/api/{var_uri_path_1}"
+        query_string = null
+        reroute      = false
       }
     }
   }
@@ -216,7 +217,7 @@ resource "azurerm_application_gateway" "core" {
   probe {
     name                                      = "notification-health-probe"
     protocol                                  = "Https"
-    path                                      = "/health"
+    path                                      = "/api/health"
     interval                                  = 30
     timeout                                   = 30
     unhealthy_threshold                       = 3
@@ -285,10 +286,17 @@ resource "azurerm_application_gateway" "core" {
 
     path_rule {
       name                       = "notification-path-rule"
-      paths                      = ["/notify/*", "/ws"]
+      paths                      = ["/notify/*"]
       backend_address_pool_name  = "notification-backend-pool"
       backend_http_settings_name = "notification-http-settings"
       rewrite_rule_set_name      = "notification-path-rewrite"
+    }
+
+    path_rule {
+      name                       = "websocket-path-rule"
+      paths                      = ["/ws"]
+      backend_address_pool_name  = "notification-backend-pool"
+      backend_http_settings_name = "notification-http-settings"
     }
   }
 
