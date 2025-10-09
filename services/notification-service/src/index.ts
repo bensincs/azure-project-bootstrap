@@ -74,7 +74,7 @@ function broadcastNotification(notification: any) {
 }
 
 // REST API endpoint to push notifications
-app.post("/api/notifications/broadcast", (req, res) => {
+app.post("/api/broadcast", (req, res) => {
   const notification = req.body;
 
   if (!notification || !notification.message) {

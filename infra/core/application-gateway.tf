@@ -165,6 +165,27 @@ resource "azurerm_application_gateway" "core" {
     probe_name                          = "notification-health-probe"
   }
 
+  # Rewrite rule set for notification service path rewriting
+  rewrite_rule_set {
+    name = "notification-path-rewrite"
+
+    rewrite_rule {
+      name          = "rewrite-notify-to-api"
+      rule_sequence = 100
+
+      condition {
+        variable    = "var_uri_path"
+        pattern     = "/notify/(.*)"
+        ignore_case = true
+      }
+
+      url {
+        path    = "/api/{var_uri_path_1}"
+        reroute = false
+      }
+    }
+  }
+
   # Health probes
   probe {
     name                                      = "ui-health-probe"
@@ -264,9 +285,10 @@ resource "azurerm_application_gateway" "core" {
 
     path_rule {
       name                       = "notification-path-rule"
-      paths                      = ["/api/notifications/*", "/ws"]
+      paths                      = ["/notify/*", "/ws"]
       backend_address_pool_name  = "notification-backend-pool"
       backend_http_settings_name = "notification-http-settings"
+      rewrite_rule_set_name      = "notification-path-rewrite"
     }
   }
 

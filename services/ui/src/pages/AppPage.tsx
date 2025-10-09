@@ -14,11 +14,8 @@ export default function AppPage() {
     message: string;
   } | null>(null);
 
-  const apiUrl =
-    import.meta.env.VITE_WS_URL?.replace(/^wss?:/, "https:").replace(
-      /\/ws$/,
-      ""
-    ) || "http://localhost:3001";
+  // Get API URL from environment or default to localhost
+  const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080";
 
   const handleSendNotification = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,7 +29,7 @@ export default function AppPage() {
     setStatus(null);
 
     try {
-      const response = await fetch(`${apiUrl}/api/notifications/broadcast`, {
+      const response = await fetch(`${apiUrl}/notify/broadcast`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
