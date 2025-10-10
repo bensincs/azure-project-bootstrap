@@ -1,5 +1,5 @@
-# Application Gateway for internal routing to private Container Apps
-# APIM handles SSL/TLS termination and JWT validation
+# Application Gateway for routing to private Container Apps
+# APIM connects to App Gateway via private IP, App Gateway routes to private Container Apps
 
 # Network Security Group for Application Gateway
 resource "azurerm_network_security_group" "app_gateway" {
@@ -10,7 +10,7 @@ resource "azurerm_network_security_group" "app_gateway" {
   tags = local.common_tags
 }
 
-# NSG Rule: Allow inbound from VNet on port 80 (APIM traffic)
+# NSG Rule: Allow inbound HTTP from VNet (APIM traffic)
 resource "azurerm_network_security_rule" "app_gateway_http" {
   name                        = "AllowVNetHTTPInbound"
   priority                    = 100
@@ -38,8 +38,8 @@ resource "azurerm_application_gateway" "core" {
   location            = azurerm_resource_group.core.location
 
   sku {
-    name     = "Standard_v2"
-    tier     = "Standard_v2"
+    name     = "Standard_Small"
+    tier     = "Standard"
     capacity = 2
   }
 

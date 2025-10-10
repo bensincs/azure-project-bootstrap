@@ -2,7 +2,7 @@
 
 # API Management Service
 resource "azurerm_api_management" "core" {
-  name                = "apim-${var.resource_name_prefix}-${var.environment}"
+  name                = "apim-${var.resource_name_prefix}-${var.environment}-${random_string.suffix.result}"
   location            = azurerm_resource_group.core.location
   resource_group_name = azurerm_resource_group.core.name
   publisher_name      = var.apim_publisher_name
@@ -15,8 +15,12 @@ resource "azurerm_api_management" "core" {
     type = "SystemAssigned"
   }
 
-  # Virtual network integration (optional but recommended)
-  virtual_network_type = "None" # Options: None, External, Internal
+  # Virtual network integration - External mode (public IP + can reach VNet resources)
+  virtual_network_type = "External"
+  
+  virtual_network_configuration {
+    subnet_id = azurerm_subnet.apim.id
+  }
 
   tags = local.common_tags
 }
