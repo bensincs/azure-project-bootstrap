@@ -70,6 +70,14 @@ resource "azurerm_subnet" "app_gateway" {
   address_prefixes     = ["10.0.5.0/24"]
 }
 
+# Subnet for APIM
+resource "azurerm_subnet" "apim" {
+  name                 = "snet-apim-${var.environment}"
+  resource_group_name  = azurerm_resource_group.core.name
+  virtual_network_name = azurerm_virtual_network.core.name
+  address_prefixes     = ["10.0.6.0/27"]
+}
+
 # Network Security Group for Container Apps
 resource "azurerm_network_security_group" "container_apps" {
   name                = "nsg-container-apps-${var.environment}"

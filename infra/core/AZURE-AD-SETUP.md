@@ -17,7 +17,7 @@ The Terraform configuration in `azure-ad.tf` automatically creates and manages:
 
 **Example:** `app-core-dev`
 
-**Purpose:** 
+**Purpose:**
 - Issues JWT tokens for authenticated users
 - Validates user authentication via Azure AD
 - Provides user claims (email, name, object ID)
@@ -234,25 +234,25 @@ import { useMsal } from '@azure/msal-react';
 
 function MyComponent() {
   const { instance, accounts } = useMsal();
-  
+
   const callAPI = async () => {
     const request = {
       scopes: [`api://${process.env.REACT_APP_AZURE_CLIENT_ID}/api.access`],
       account: accounts[0]
     };
-    
+
     const response = await instance.acquireTokenSilent(request);
-    
+
     // Call your API with the token
     const apiResponse = await fetch('https://your-apim-url/api/endpoint', {
       headers: {
         'Authorization': `Bearer ${response.accessToken}`
       }
     });
-    
+
     return apiResponse.json();
   };
-  
+
   return (
     <button onClick={callAPI}>Call Protected API</button>
   );

@@ -17,7 +17,7 @@ resource "azurerm_api_management" "core" {
 
   # Virtual network integration - External mode (public IP + can reach VNet resources)
   virtual_network_type = "External"
-  
+
   virtual_network_configuration {
     subnet_id = azurerm_subnet.apim.id
   }
