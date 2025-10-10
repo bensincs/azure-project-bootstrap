@@ -48,28 +48,28 @@ resource "azurerm_api_management_api_policy" "main" {
         <base />
         <!-- Validate JWT tokens from Azure AD -->
         <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized. Valid JWT token required.">
-            <openid-config url="https://login.microsoftonline.com/${var.azure_tenant_id}/v2.0/.well-known/openid-configuration" />
+            <openid-config url="https://login.microsoftonline.com/${data.azuread_client_config.current.tenant_id}/v2.0/.well-known/openid-configuration" />
             <audiences>
-                <audience>${var.azure_client_id}</audience>
+                <audience>${azuread_application.main.client_id}</audience>
             </audiences>
             <issuers>
-                <issuer>https://login.microsoftonline.com/${var.azure_tenant_id}/v2.0</issuer>
+                <issuer>https://login.microsoftonline.com/${data.azuread_client_config.current.tenant_id}/v2.0</issuer>
             </issuers>
             <required-claims>
                 <claim name="aud" match="any">
-                    <value>${var.azure_client_id}</value>
+                    <value>${azuread_application.main.client_id}</value>
                 </claim>
             </required-claims>
         </validate-jwt>
-        
+
         <!-- Set backend service URL (Application Gateway private IP) -->
         <set-backend-service base-url="http://${azurerm_application_gateway.core.frontend_ip_configuration[0].private_ip_address}" />
-        
+
         <!-- Forward original host header -->
         <set-header name="X-Forwarded-Host" exists-action="override">
             <value>@(context.Request.OriginalUrl.Host)</value>
         </set-header>
-        
+
         <!-- Add user claims as headers for backend services -->
         <set-header name="X-User-Email" exists-action="override">
             <value>@(context.Request.Headers.GetValueOrDefault("Authorization","")
@@ -86,7 +86,7 @@ resource "azurerm_api_management_api_policy" "main" {
                 .Replace("Bearer ", "")
                 .AsJwt()?.Claims.GetValueOrDefault("name", ""))</value>
         </set-header>
-        
+
         <!-- CORS policy -->
         <cors allow-credentials="true">
             <allowed-origins>
@@ -185,8 +185,8 @@ resource "azurerm_api_management_api_operation" "catchall" {
 
 # Custom domain for API Management (optional)
 resource "azurerm_api_management_custom_domain" "core" {
-  count               = var.apim_custom_domain_enabled ? 1 : 0
-  api_management_id   = azurerm_api_management.core.id
+  count             = var.apim_custom_domain_enabled ? 1 : 0
+  api_management_id = azurerm_api_management.core.id
 
   gateway {
     host_name                    = var.apim_custom_domain

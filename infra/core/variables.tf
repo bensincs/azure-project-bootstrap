@@ -25,17 +25,6 @@ variable "tags" {
   default     = {}
 }
 
-# Azure AD Configuration for Auth Service
-variable "azure_tenant_id" {
-  description = "Azure AD Tenant ID for JWT validation"
-  type        = string
-}
-
-variable "azure_client_id" {
-  description = "Azure AD App Registration Client ID for JWT validation"
-  type        = string
-}
-
 # API Management Configuration
 variable "apim_publisher_name" {
   description = "Publisher name for API Management"

@@ -1,0 +1,83 @@
+# Azure AD App Registration for JWT validation
+
+# Azure AD Application Registration
+resource "azuread_application" "main" {
+  display_name = "app-${var.resource_name_prefix}-${var.environment}"
+  owners       = [data.azuread_client_config.current.object_id]
+
+  # Web application configuration
+  web {
+    homepage_url = "https://${azurerm_api_management.core.gateway_url}"
+
+    implicit_grant {
+      access_token_issuance_enabled = true
+      id_token_issuance_enabled     = true
+    }
+  }
+
+  # Required resource access (Microsoft Graph)
+  required_resource_access {
+    resource_app_id = "00000003-0000-0000-c000-000000000000" # Microsoft Graph
+
+    resource_access {
+      id   = "e1fe6dd8-ba31-4d61-89e7-88639da4683d" # User.Read
+      type = "Scope"
+    }
+
+    resource_access {
+      id   = "37f7f235-527c-4136-accd-4a02d197296e" # openid
+      type = "Scope"
+    }
+
+    resource_access {
+      id   = "7427e0e9-2fba-42fe-b0c0-848c9e6a8182" # offline_access
+      type = "Scope"
+    }
+
+    resource_access {
+      id   = "64a6cdd6-aab1-4aaf-94b8-3cc8405e90d0" # email
+      type = "Scope"
+    }
+
+    resource_access {
+      id   = "14dad69e-099b-42c9-810b-d002981feec1" # profile
+      type = "Scope"
+    }
+  }
+
+  # API permissions exposed by this application
+  api {
+    requested_access_token_version = 2
+
+    oauth2_permission_scope {
+      admin_consent_description  = "Allow the application to access the API on behalf of the signed-in user"
+      admin_consent_display_name = "Access API"
+      enabled                    = true
+      id                         = "96183846-204b-4b43-82e1-5d2222eb4b9b"
+      type                       = "User"
+      user_consent_description   = "Allow the application to access the API on your behalf"
+      user_consent_display_name  = "Access API"
+      value                      = "api.access"
+    }
+  }
+
+  tags = [
+    var.environment,
+    "terraform-managed"
+  ]
+}
+
+# Service Principal for the App Registration
+resource "azuread_service_principal" "main" {
+  client_id                    = azuread_application.main.client_id
+  app_role_assignment_required = false
+  owners                       = [data.azuread_client_config.current.object_id]
+
+  tags = [
+    var.environment,
+    "terraform-managed"
+  ]
+}
+
+# Data source for current Azure AD config
+data "azuread_client_config" "current" {}

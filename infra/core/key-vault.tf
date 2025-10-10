@@ -62,37 +62,9 @@ resource "azurerm_key_vault_access_policy" "current_user" {
   ]
 }
 
-# Managed Identity for Application Gateway to access Key Vault
-resource "azurerm_user_assigned_identity" "app_gateway" {
-  name                = "id-appgw-${var.resource_name_prefix}-${var.environment}"
-  resource_group_name = azurerm_resource_group.core.name
-  location            = azurerm_resource_group.core.location
-
-  tags = local.common_tags
-}
-
-# Access policy for Application Gateway managed identity
-resource "azurerm_key_vault_access_policy" "app_gateway" {
-  key_vault_id = azurerm_key_vault.core.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_user_assigned_identity.app_gateway.principal_id
-
-  secret_permissions = [
-    "Get",
-    "List",
-  ]
-
-  certificate_permissions = [
-    "Get",
-    "List",
-  ]
-
-  depends_on = [azurerm_key_vault_access_policy.current_user]
-}
-
-# Self-signed certificate for Application Gateway
+# Self-signed certificate for APIM custom domain
 resource "azurerm_key_vault_certificate" "app_gateway" {
-  name         = "appgw-ssl-cert"
+  name         = "apim-ssl-cert"
   key_vault_id = azurerm_key_vault.core.id
 
   certificate_policy {

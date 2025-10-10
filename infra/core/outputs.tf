@@ -18,9 +18,9 @@ output "storage_account_id" {
   value       = azurerm_storage_account.core.id
 }
 
-output "website_url" {
-  description = "Full URL to access the website via Application Gateway"
-  value       = "http://${azurerm_public_ip.app_gateway.ip_address}/"
+output "apim_gateway_url" {
+  description = "Public URL to access the application via API Management"
+  value       = "https://${azurerm_api_management.core.gateway_url}"
 }
 
 output "container_registry_name" {
@@ -70,14 +70,9 @@ output "api_service_fqdn" {
 }
 
 # Application Gateway Outputs
-output "app_gateway_public_ip" {
-  description = "Public IP address of the Application Gateway"
-  value       = azurerm_public_ip.app_gateway.ip_address
-}
-
-output "app_gateway_url" {
-  description = "Full URL to access the application via Application Gateway"
-  value       = "http://${azurerm_public_ip.app_gateway.ip_address}"
+output "app_gateway_private_ip" {
+  description = "Private IP address of the Application Gateway (internal only)"
+  value       = azurerm_application_gateway.core.frontend_ip_configuration[0].private_ip_address
 }
 
 output "app_gateway_name" {
@@ -169,4 +164,36 @@ output "private_dns_zone_storage" {
 output "private_dns_zone_acr" {
   description = "Name of the Container Registry private DNS zone"
   value       = azurerm_private_dns_zone.acr.name
+}
+
+# Azure AD App Registration Outputs
+output "azure_ad_application_id" {
+  description = "Client ID of the Azure AD App Registration"
+  value       = azuread_application.main.client_id
+}
+
+output "azure_ad_tenant_id" {
+  description = "Azure AD Tenant ID"
+  value       = data.azuread_client_config.current.tenant_id
+}
+
+output "azure_ad_application_name" {
+  description = "Display name of the Azure AD App Registration"
+  value       = azuread_application.main.display_name
+}
+
+output "azure_ad_service_principal_id" {
+  description = "Object ID of the Service Principal"
+  value       = azuread_service_principal.main.object_id
+}
+
+# API Management with App Registration
+output "apim_gateway_url_full" {
+  description = "Full APIM gateway URL with protocol"
+  value       = "https://${azurerm_api_management.core.gateway_url}"
+}
+
+output "apim_name" {
+  description = "Name of the API Management instance"
+  value       = azurerm_api_management.core.name
 }
