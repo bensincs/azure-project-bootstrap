@@ -54,3 +54,10 @@ variable "apim_custom_domain" {
   type        = string
   default     = ""
 }
+
+# VPN Gateway Configuration
+variable "enable_vpn_gateway" {
+  description = "Enable VPN Gateway for secure remote access"
+  type        = bool
+  default     = false
+}

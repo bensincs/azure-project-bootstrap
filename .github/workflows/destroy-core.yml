@@ -119,13 +119,13 @@ jobs:
           echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
           echo "**Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          
+
           if [ "${{ needs.terraform-destroy.result }}" == "success" ]; then
             echo "✅ **Core Infrastructure:** Destroyed successfully" >> $GITHUB_STEP_SUMMARY
           else
             echo "❌ **Core Infrastructure:** Destruction failed" >> $GITHUB_STEP_SUMMARY
           fi
-          
+
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "### Important Notes" >> $GITHUB_STEP_SUMMARY
           echo "- Verify all resources have been removed in Azure Portal" >> $GITHUB_STEP_SUMMARY

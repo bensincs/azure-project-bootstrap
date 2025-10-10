@@ -1,5 +1,6 @@
 # Public IP for VPN Gateway
 resource "azurerm_public_ip" "vpn_gateway" {
+  count               = var.enable_vpn_gateway ? 1 : 0
   name                = "pip-vpn-gateway-${var.environment}"
   resource_group_name = azurerm_resource_group.core.name
   location            = azurerm_resource_group.core.location
@@ -11,6 +12,7 @@ resource "azurerm_public_ip" "vpn_gateway" {
 
 # VPN Gateway
 resource "azurerm_virtual_network_gateway" "vpn" {
+  count               = var.enable_vpn_gateway ? 1 : 0
   name                = "vgw-${var.resource_name_prefix}-${var.environment}"
   resource_group_name = azurerm_resource_group.core.name
   location            = azurerm_resource_group.core.location
@@ -24,7 +26,7 @@ resource "azurerm_virtual_network_gateway" "vpn" {
 
   ip_configuration {
     name                          = "vnetGatewayConfig"
-    public_ip_address_id          = azurerm_public_ip.vpn_gateway.id
+    public_ip_address_id          = azurerm_public_ip.vpn_gateway[0].id
     private_ip_address_allocation = "Dynamic"
     subnet_id                     = azurerm_subnet.gateway.id
   }

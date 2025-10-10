@@ -114,12 +114,12 @@ output "app_gateway_name" {
 # VPN Gateway Outputs
 output "vpn_gateway_name" {
   description = "Name of the VPN Gateway"
-  value       = azurerm_virtual_network_gateway.vpn.name
+  value       = var.enable_vpn_gateway ? azurerm_virtual_network_gateway.vpn[0].name : null
 }
 
 output "vpn_gateway_public_ip" {
   description = "Public IP address of the VPN Gateway"
-  value       = azurerm_public_ip.vpn_gateway.ip_address
+  value       = var.enable_vpn_gateway ? azurerm_public_ip.vpn_gateway[0].ip_address : null
 }
 
 # Virtual Network Outputs

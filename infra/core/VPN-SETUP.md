@@ -1,5 +1,7 @@
 # VPN Gateway Setup Guide - Azure Entra ID Authentication
 
+> **Note**: VPN Gateway deployment is **disabled by default** to reduce costs and deployment time. Set `enable_vpn_gateway = true` in `vars/dev.tfvars` to enable it.
+
 This guide explains how to connect to your Azure VPN Gateway using Azure Entra ID (Azure AD) authentication.
 
 ## Overview
@@ -9,6 +11,22 @@ The VPN Gateway provides secure remote access to private resources in the Azure 
 - Storage Account (private endpoint)
 - Container Registry (private endpoint)
 - Private DNS Resolver
+
+## Enabling VPN Gateway
+
+To deploy the VPN Gateway, edit `vars/dev.tfvars` and set:
+
+```hcl
+enable_vpn_gateway = true
+```
+
+Then deploy:
+
+```bash
+terraform apply -var-file=vars/dev.tfvars
+```
+
+**⏱️ Note**: VPN Gateway provisioning takes 30-45 minutes and adds ~$150/month to your costs.
 
 ## Prerequisites
 
