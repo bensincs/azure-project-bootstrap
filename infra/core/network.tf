@@ -78,6 +78,81 @@ resource "azurerm_subnet" "apim" {
   address_prefixes     = ["10.0.6.0/27"]
 }
 
+# Network Security Group for APIM
+resource "azurerm_network_security_group" "apim" {
+  name                = "nsg-apim-${var.environment}"
+  resource_group_name = azurerm_resource_group.core.name
+  location            = azurerm_resource_group.core.location
+
+  tags = local.common_tags
+}
+
+# NSG Rule: Allow inbound management endpoint
+resource "azurerm_network_security_rule" "apim_management" {
+  name                        = "AllowAPIMManagement"
+  priority                    = 100
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "3443"
+  source_address_prefix       = "ApiManagement"
+  destination_address_prefix  = "VirtualNetwork"
+  resource_group_name         = azurerm_resource_group.core.name
+  network_security_group_name = azurerm_network_security_group.apim.name
+}
+
+# NSG Rule: Allow inbound HTTPS for API Gateway
+resource "azurerm_network_security_rule" "apim_https" {
+  name                        = "AllowHTTPS"
+  priority                    = 110
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "443"
+  source_address_prefix       = "Internet"
+  destination_address_prefix  = "VirtualNetwork"
+  resource_group_name         = azurerm_resource_group.core.name
+  network_security_group_name = azurerm_network_security_group.apim.name
+}
+
+# NSG Rule: Allow outbound to Storage
+resource "azurerm_network_security_rule" "apim_storage" {
+  name                        = "AllowStorageOutbound"
+  priority                    = 100
+  direction                   = "Outbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "443"
+  source_address_prefix       = "VirtualNetwork"
+  destination_address_prefix  = "Storage"
+  resource_group_name         = azurerm_resource_group.core.name
+  network_security_group_name = azurerm_network_security_group.apim.name
+}
+
+# NSG Rule: Allow outbound to SQL
+resource "azurerm_network_security_rule" "apim_sql" {
+  name                        = "AllowSQLOutbound"
+  priority                    = 110
+  direction                   = "Outbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "1433"
+  source_address_prefix       = "VirtualNetwork"
+  destination_address_prefix  = "Sql"
+  resource_group_name         = azurerm_resource_group.core.name
+  network_security_group_name = azurerm_network_security_group.apim.name
+}
+
+# Associate NSG with APIM Subnet
+resource "azurerm_subnet_network_security_group_association" "apim" {
+  subnet_id                 = azurerm_subnet.apim.id
+  network_security_group_id = azurerm_network_security_group.apim.id
+}
+
 # Network Security Group for Container Apps
 resource "azurerm_network_security_group" "container_apps" {
   name                = "nsg-container-apps-${var.environment}"

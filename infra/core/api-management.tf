@@ -15,8 +15,9 @@ resource "azurerm_api_management" "core" {
     type = "SystemAssigned"
   }
 
-  # Virtual network integration - External mode (public IP + can reach VNet resources)
-  virtual_network_type = "External"
+  # Virtual network integration - Internal mode (private IP only, accessible from VNet)
+  virtual_network_type          = "Internal"
+  public_network_access_enabled = false
 
   virtual_network_configuration {
     subnet_id = azurerm_subnet.apim.id
@@ -37,7 +38,8 @@ resource "azurerm_api_management_api" "main" {
 
   subscription_required = false
 
-  service_url = "http://${azurerm_application_gateway.core.frontend_ip_configuration[0].private_ip_address}"
+  # APIM will route directly to Container Apps private endpoints
+  service_url = "https://${azurerm_container_app.api_service.ingress[0].fqdn}"
 }
 
 # API Management Policy - JWT Validation
@@ -66,8 +68,18 @@ resource "azurerm_api_management_api_policy" "main" {
             </required-claims>
         </validate-jwt>
 
-        <!-- Set backend service URL (Application Gateway private IP) -->
-        <set-backend-service base-url="http://${azurerm_application_gateway.core.frontend_ip_configuration[0].private_ip_address}" />
+        <!-- Route directly to Container Apps based on path -->
+        <choose>
+            <when condition="@(context.Request.Url.Path.StartsWith("/api"))">
+                <set-backend-service base-url="https://${azurerm_container_app.api_service.ingress[0].fqdn}" />
+            </when>
+            <when condition="@(context.Request.Url.Path.StartsWith("/notify") || context.Request.Url.Path.StartsWith("/ws"))">
+                <set-backend-service base-url="https://${azurerm_container_app.notification_service.ingress[0].fqdn}" />
+            </when>
+            <otherwise>
+                <set-backend-service base-url="https://${azurerm_container_app.ui_service.ingress[0].fqdn}" />
+            </otherwise>
+        </choose>
 
         <!-- Forward original host header -->
         <set-header name="X-Forwarded-Host" exists-action="override">

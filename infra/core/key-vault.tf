@@ -62,6 +62,23 @@ resource "azurerm_key_vault_access_policy" "current_user" {
   ]
 }
 
+# Access policy for Application Gateway managed identity
+resource "azurerm_key_vault_access_policy" "app_gateway" {
+  key_vault_id = azurerm_key_vault.core.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = azurerm_user_assigned_identity.app_gateway.principal_id
+
+  certificate_permissions = [
+    "Get",
+    "List",
+  ]
+
+  secret_permissions = [
+    "Get",
+    "List",
+  ]
+}
+
 # Self-signed certificate for APIM custom domain
 resource "azurerm_key_vault_certificate" "app_gateway" {
   name         = "apim-ssl-cert"
@@ -116,7 +133,10 @@ resource "azurerm_key_vault_certificate" "app_gateway" {
     }
   }
 
-  depends_on = [azurerm_key_vault_access_policy.current_user]
+  depends_on = [
+    azurerm_key_vault_access_policy.current_user,
+    azurerm_key_vault_access_policy.app_gateway,
+  ]
 }
 
 # Private DNS Zone for Key Vault

@@ -18,9 +18,19 @@ output "storage_account_id" {
   value       = azurerm_storage_account.core.id
 }
 
-output "apim_gateway_url" {
-  description = "Public URL to access the application via API Management"
-  value       = "https://${azurerm_api_management.core.gateway_url}"
+output "app_gateway_public_ip" {
+  description = "Public IP address of the Application Gateway (main entry point)"
+  value       = azurerm_public_ip.app_gateway.ip_address
+}
+
+output "application_url" {
+  description = "URL to access the application via Application Gateway"
+  value       = "https://${azurerm_public_ip.app_gateway.ip_address}"
+}
+
+output "apim_private_ip" {
+  description = "Private IP address of the API Management (internal only)"
+  value       = azurerm_api_management.core.private_ip_addresses[0]
 }
 
 output "container_registry_name" {

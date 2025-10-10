@@ -1,6 +1,26 @@
 # Application Gateway for routing to private Container Apps
 # APIM connects to App Gateway via private IP, App Gateway routes to private Container Apps
 
+# User-assigned identity for Application Gateway to access Key Vault
+resource "azurerm_user_assigned_identity" "app_gateway" {
+  name                = "id-appgw-${var.resource_name_prefix}-${var.environment}"
+  resource_group_name = azurerm_resource_group.core.name
+  location            = azurerm_resource_group.core.location
+
+  tags = local.common_tags
+}
+
+# Public IP for Application Gateway (required for v2 SKU)
+resource "azurerm_public_ip" "app_gateway" {
+  name                = "pip-appgw-${var.environment}"
+  resource_group_name = azurerm_resource_group.core.name
+  location            = azurerm_resource_group.core.location
+  allocation_method   = "Static"
+  sku                 = "Standard"
+
+  tags = local.common_tags
+}
+
 # Network Security Group for Application Gateway
 resource "azurerm_network_security_group" "app_gateway" {
   name                = "vnet-${var.resource_name_prefix}-snet-appgw-${var.environment}-nsg-${var.location}"
@@ -38,9 +58,15 @@ resource "azurerm_application_gateway" "core" {
   location            = azurerm_resource_group.core.location
 
   sku {
-    name     = "Standard_Small"
-    tier     = "Standard"
+    name     = "Standard_v2"
+    tier     = "Standard_v2"
     capacity = 2
+  }
+
+  # System-assigned managed identity to access Key Vault
+  identity {
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.app_gateway.id]
   }
 
   gateway_ip_configuration {
@@ -48,178 +74,116 @@ resource "azurerm_application_gateway" "core" {
     subnet_id = azurerm_subnet.app_gateway.id
   }
 
-  # Frontend configuration (private IP only)
+  # SSL certificate from Key Vault
+  ssl_certificate {
+    name                = "apim-ssl-cert"
+    key_vault_secret_id = azurerm_key_vault_certificate.app_gateway.secret_id
+  }
+
+  # Frontend ports
+  frontend_port {
+    name = "https-port"
+    port = 443
+  }
+
   frontend_port {
     name = "http-port"
     port = 80
   }
 
+  # Public frontend IP (required for v2 SKU)
   frontend_ip_configuration {
-    name                          = "frontend-ip-config"
+    name                 = "public-frontend-ip-config"
+    public_ip_address_id = azurerm_public_ip.app_gateway.id
+  }
+
+  # Private frontend IP (for APIM to connect)
+  frontend_ip_configuration {
+    name                          = "private-frontend-ip-config"
     subnet_id                     = azurerm_subnet.app_gateway.id
     private_ip_address_allocation = "Dynamic"
   }
 
-  # Backend pools
+  # Backend pools - pointing to APIM
   backend_address_pool {
-    name  = "ui-backend-pool"
-    fqdns = [azurerm_container_app.ui_service.ingress[0].fqdn]
+    name         = "apim-backend-pool"
+    ip_addresses = [azurerm_api_management.core.private_ip_addresses[0]]
   }
 
-  backend_address_pool {
-    name  = "api-backend-pool"
-    fqdns = [azurerm_container_app.api_service.ingress[0].fqdn]
-  }
-
-  backend_address_pool {
-    name  = "notification-backend-pool"
-    fqdns = [azurerm_container_app.notification_service.ingress[0].fqdn]
-  }
-
-  # Backend HTTP settings
+  # Backend HTTP settings for APIM
   backend_http_settings {
-    name                                = "ui-http-settings"
-    cookie_based_affinity               = "Disabled"
-    port                                = 443
-    protocol                            = "Https"
-    request_timeout                     = 60
-    pick_host_name_from_backend_address = true
-    probe_name                          = "ui-health-probe"
+    name                  = "apim-http-settings"
+    cookie_based_affinity = "Disabled"
+    port                  = 443
+    protocol              = "Https"
+    request_timeout       = 60
+    probe_name            = "apim-health-probe"
+    host_name             = replace(azurerm_api_management.core.gateway_url, "https://", "")
   }
 
-  backend_http_settings {
-    name                                = "api-http-settings"
-    cookie_based_affinity               = "Disabled"
-    port                                = 443
-    protocol                            = "Https"
-    request_timeout                     = 60
-    pick_host_name_from_backend_address = true
-    probe_name                          = "api-health-probe"
-  }
-
-  backend_http_settings {
-    name                                = "notification-http-settings"
-    cookie_based_affinity               = "Disabled"
-    port                                = 443
-    protocol                            = "Https"
-    request_timeout                     = 60
-    pick_host_name_from_backend_address = true
-    probe_name                          = "notification-health-probe"
-  }
-
-  # Rewrite rule set for notification service path rewriting
-  rewrite_rule_set {
-    name = "notification-path-rewrite"
-
-    rewrite_rule {
-      name          = "rewrite-notify-to-api"
-      rule_sequence = 100
-
-      condition {
-        variable    = "var_uri_path"
-        pattern     = "^/notify/(.*)$"
-        ignore_case = true
-      }
-
-      url {
-        path         = "/api/{var_uri_path_1}"
-        query_string = null
-        reroute      = false
-      }
-    }
-  }
-
-  # Health probes
+  # Health probe for APIM
   probe {
-    name                                      = "ui-health-probe"
-    protocol                                  = "Https"
-    path                                      = "/health"
-    interval                                  = 30
-    timeout                                   = 30
-    unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
+    name                = "apim-health-probe"
+    protocol            = "Https"
+    path                = "/status-0123456789abcdef"
+    interval            = 30
+    timeout             = 30
+    unhealthy_threshold = 3
+    host                = replace(azurerm_api_management.core.gateway_url, "https://", "")
     match {
       status_code = ["200-399"]
     }
   }
 
-  probe {
-    name                                      = "api-health-probe"
-    protocol                                  = "Https"
-    path                                      = "/api/health"
-    interval                                  = 30
-    timeout                                   = 30
-    unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
-    match {
-      status_code = ["200-399"]
-    }
+  # HTTPS Listener on public frontend
+  http_listener {
+    name                           = "https-listener"
+    frontend_ip_configuration_name = "public-frontend-ip-config"
+    frontend_port_name             = "https-port"
+    protocol                       = "Https"
+    ssl_certificate_name           = "apim-ssl-cert"
   }
 
-  probe {
-    name                                      = "notification-health-probe"
-    protocol                                  = "Https"
-    path                                      = "/api/health"
-    interval                                  = 30
-    timeout                                   = 30
-    unhealthy_threshold                       = 3
-    pick_host_name_from_backend_http_settings = true
-    match {
-      status_code = ["200-399"]
-    }
-  }
-
-  # HTTP Listener (no SSL, internal only)
+  # HTTP to HTTPS redirect listener
   http_listener {
     name                           = "http-listener"
-    frontend_ip_configuration_name = "frontend-ip-config"
+    frontend_ip_configuration_name = "public-frontend-ip-config"
     frontend_port_name             = "http-port"
     protocol                       = "Http"
   }
 
-  # HTTP routing rule with path-based routing
-  request_routing_rule {
-    name               = "http-routing-rule"
-    rule_type          = "PathBasedRouting"
-    http_listener_name = "http-listener"
-    url_path_map_name  = "path-based-routing"
-    priority           = 100
+  # Redirect configuration (HTTP to HTTPS)
+  redirect_configuration {
+    name                 = "http-to-https"
+    redirect_type        = "Permanent"
+    target_listener_name = "https-listener"
+    include_path         = true
+    include_query_string = true
   }
 
-  # URL path map for routing
-  url_path_map {
-    name                               = "path-based-routing"
-    default_backend_address_pool_name  = "ui-backend-pool"
-    default_backend_http_settings_name = "ui-http-settings"
+  # HTTP to HTTPS redirect rule
+  request_routing_rule {
+    name                        = "http-redirect-rule"
+    rule_type                   = "Basic"
+    http_listener_name          = "http-listener"
+    redirect_configuration_name = "http-to-https"
+    priority                    = 50
+  }
 
-    path_rule {
-      name                       = "api-path-rule"
-      paths                      = ["/api/*"]
-      backend_address_pool_name  = "api-backend-pool"
-      backend_http_settings_name = "api-http-settings"
-    }
-
-    path_rule {
-      name                       = "notification-path-rule"
-      paths                      = ["/notify/*"]
-      backend_address_pool_name  = "notification-backend-pool"
-      backend_http_settings_name = "notification-http-settings"
-      rewrite_rule_set_name      = "notification-path-rewrite"
-    }
-
-    path_rule {
-      name                       = "websocket-path-rule"
-      paths                      = ["/ws"]
-      backend_address_pool_name  = "notification-backend-pool"
-      backend_http_settings_name = "notification-http-settings"
-    }
+  # HTTPS routing rule - all traffic to APIM
+  request_routing_rule {
+    name                       = "apim-routing-rule"
+    rule_type                  = "Basic"
+    http_listener_name         = "https-listener"
+    backend_address_pool_name  = "apim-backend-pool"
+    backend_http_settings_name = "apim-http-settings"
+    priority                   = 100
   }
 
   tags = local.common_tags
 
   depends_on = [
-    azurerm_container_app.ui_service,
-    azurerm_container_app.api_service,
-    azurerm_container_app.notification_service,
+    azurerm_api_management.core,
+    azurerm_key_vault_certificate.app_gateway,
   ]
 }
