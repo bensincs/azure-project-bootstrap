@@ -1,0 +1,133 @@
+name: Destroy Core Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to destroy"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+      confirmation:
+        description: 'Type "destroy" to confirm infrastructure destruction'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  validate-confirmation:
+    name: "Validate Destruction Confirmation"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check Confirmation
+        run: |
+          if [ "${{ github.event.inputs.confirmation }}" != "destroy" ]; then
+            echo "❌ Confirmation failed. You must type 'destroy' to proceed."
+            echo "You entered: '${{ github.event.inputs.confirmation }}'"
+            exit 1
+          fi
+          echo "✅ Confirmation validated. Proceeding with infrastructure destruction..."
+
+  terraform-destroy:
+    name: "Terraform Destroy"
+    runs-on: ubuntu-latest
+    needs: validate-confirmation
+
+    defaults:
+      run:
+        working-directory: infra/core
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      # Set Terraform AzureRM provider environment variables
+      - name: Set Terraform Environment Variables
+        run: |
+          echo "Setting Terraform AzureRM environment variables..."
+          echo "ARM_CLIENT_ID=${{ secrets.AZURE_CLIENT_ID }}" >> $GITHUB_ENV
+          echo "ARM_TENANT_ID=${{ secrets.AZURE_TENANT_ID }}" >> $GITHUB_ENV
+          echo "ARM_SUBSCRIPTION_ID=${{ secrets.AZURE_SUBSCRIPTION_ID }}" >> $GITHUB_ENV
+          echo "ARM_USE_OIDC=true" >> $GITHUB_ENV
+          echo "ARM_USE_CLI=false" >> $GITHUB_ENV
+
+      - name: Terraform Init
+        id: init
+        run: terraform init -backend-config=backends/backend-${{ github.event.inputs.environment }}.hcl
+
+      - name: Terraform Plan Destroy
+        id: plan
+        run: |
+          echo "Planning destruction of ${{ github.event.inputs.environment }} environment..."
+          terraform plan -destroy -var-file=vars/${{ github.event.inputs.environment }}.tfvars -out=destroy.tfplan
+
+      - name: Show Destroy Plan
+        run: |
+          echo "=== Resources to be DESTROYED ==="
+          terraform show destroy.tfplan
+
+      - name: Terraform Destroy
+        id: destroy
+        run: |
+          echo "🔥 Destroying infrastructure in ${{ github.event.inputs.environment }} environment..."
+          terraform apply -auto-approve destroy.tfplan
+
+      - name: Destroy Summary
+        if: success()
+        run: |
+          echo "✅ Infrastructure destruction completed successfully"
+          echo "Environment: ${{ github.event.inputs.environment }}"
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Timestamp: $(date -u)"
+
+      - name: Destroy Failed
+        if: failure()
+        run: |
+          echo "❌ Infrastructure destruction failed"
+          echo "Please check the logs above for details"
+          echo "You may need to manually clean up resources in Azure Portal"
+
+  post-destroy-notification:
+    name: "Post-Destroy Notification"
+    runs-on: ubuntu-latest
+    needs: terraform-destroy
+    if: always()
+
+    steps:
+      - name: Create Summary
+        run: |
+          echo "## 🔥 Infrastructure Destruction Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Triggered by:** @${{ github.actor }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Timestamp:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ needs.terraform-destroy.result }}" == "success" ]; then
+            echo "✅ **Core Infrastructure:** Destroyed successfully" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Core Infrastructure:** Destruction failed" >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Important Notes" >> $GITHUB_STEP_SUMMARY
+          echo "- Verify all resources have been removed in Azure Portal" >> $GITHUB_STEP_SUMMARY
+          echo "- Check for any orphaned resources or resource locks" >> $GITHUB_STEP_SUMMARY
+          echo "- Terraform state has been preserved in the bootstrap storage account" >> $GITHUB_STEP_SUMMARY
