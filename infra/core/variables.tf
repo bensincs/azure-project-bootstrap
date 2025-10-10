@@ -24,3 +24,44 @@ variable "tags" {
   type        = map(string)
   default     = {}
 }
+
+# Azure AD Configuration for Auth Service
+variable "azure_tenant_id" {
+  description = "Azure AD Tenant ID for JWT validation"
+  type        = string
+}
+
+variable "azure_client_id" {
+  description = "Azure AD App Registration Client ID for JWT validation"
+  type        = string
+}
+
+# API Management Configuration
+variable "apim_publisher_name" {
+  description = "Publisher name for API Management"
+  type        = string
+  default     = "MyCompany"
+}
+
+variable "apim_publisher_email" {
+  description = "Publisher email for API Management"
+  type        = string
+}
+
+variable "apim_sku_name" {
+  description = "SKU for API Management (Developer_1, Basic_1, Standard_1, Premium_1)"
+  type        = string
+  default     = "Developer_1"
+}
+
+variable "apim_custom_domain_enabled" {
+  description = "Enable custom domain for API Management"
+  type        = bool
+  default     = false
+}
+
+variable "apim_custom_domain" {
+  description = "Custom domain for API Management gateway"
+  type        = string
+  default     = ""
+}

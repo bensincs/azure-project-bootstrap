@@ -12,3 +12,8 @@ subscription_id = "dd78ec54-2f00-41fc-8055-8c1f2ad66a1d"
 #   Environment = "dev"
 #   ManagedBy   = "Terraform"
 # }
+
+# API Management Configuration
+apim_publisher_email = "admin@example.com"  # Update with your email
+# apim_custom_domain_enabled = true
+# apim_custom_domain = "launch.crewdune.com"
