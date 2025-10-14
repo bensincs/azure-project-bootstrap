@@ -41,16 +41,23 @@ resource "azurerm_api_management_api" "main" {
   service_url = "https://${azurerm_container_app.api_service.ingress[0].fqdn}"
 }
 
-# API Management Policy - Minimal test policy
+# API Management Policy - Routing to Container Apps
 resource "azurerm_api_management_api_policy" "main" {
   api_name            = azurerm_api_management_api.main.name
   api_management_name = azurerm_api_management.core.name
   resource_group_name = azurerm_resource_group.core.name
 
-  xml_content = file("${path.module}/apim-policy.xml")
+  xml_content = templatefile("${path.module}/apim-policy.xml", {
+    API_SERVICE_FQDN          = azurerm_container_app.api_service.ingress[0].fqdn
+    NOTIFICATION_SERVICE_FQDN = azurerm_container_app.notification_service.ingress[0].fqdn
+    UI_SERVICE_FQDN           = azurerm_container_app.ui_service.ingress[0].fqdn
+  })
 
   depends_on = [
     azurerm_api_management_api.main,
+    azurerm_container_app.api_service,
+    azurerm_container_app.ui_service,
+    azurerm_container_app.notification_service,
   ]
 }
 

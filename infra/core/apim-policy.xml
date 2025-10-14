@@ -5,13 +5,13 @@
         <!-- Route to Container Apps based on path -->
         <choose>
             <when condition="@(context.Request.Url.Path.StartsWith(&quot;/api&quot;))">
-                <set-backend-service base-url="https://{{API_SERVICE_FQDN}}" />
+                <set-backend-service base-url="https://${API_SERVICE_FQDN}" />
             </when>
             <when condition="@(context.Request.Url.Path.StartsWith(&quot;/notify&quot;) || context.Request.Url.Path.StartsWith(&quot;/ws&quot;))">
-                <set-backend-service base-url="https://{{NOTIFICATION_SERVICE_FQDN}}" />
+                <set-backend-service base-url="https://${NOTIFICATION_SERVICE_FQDN}" />
             </when>
             <otherwise>
-                <set-backend-service base-url="https://{{UI_SERVICE_FQDN}}" />
+                <set-backend-service base-url="https://${UI_SERVICE_FQDN}" />
             </otherwise>
         </choose>
 
