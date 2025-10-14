@@ -16,8 +16,7 @@ resource "azurerm_api_management" "core" {
   }
 
   # Virtual network integration - Internal mode (private IP only, accessible from VNet)
-  virtual_network_type          = "Internal"
-  public_network_access_enabled = false
+  virtual_network_type = "Internal"
 
   virtual_network_configuration {
     subnet_id = azurerm_subnet.apim.id
@@ -197,38 +196,4 @@ resource "azurerm_api_management_api_operation" "catchall" {
   method              = "*"
   url_template        = "/*"
   description         = "All API endpoints (JWT required)"
-}
-
-# Custom domain for API Management (optional)
-resource "azurerm_api_management_custom_domain" "core" {
-  count             = var.apim_custom_domain_enabled ? 1 : 0
-  api_management_id = azurerm_api_management.core.id
-
-  gateway {
-    host_name                    = var.apim_custom_domain
-    certificate                  = azurerm_key_vault_certificate.app_gateway.certificate_data
-    certificate_password         = ""
-    negotiate_client_certificate = false
-  }
-
-  depends_on = [
-    azurerm_key_vault_access_policy.apim
-  ]
-}
-
-# Key Vault access for APIM to read SSL certificate
-resource "azurerm_key_vault_access_policy" "apim" {
-  key_vault_id = azurerm_key_vault.core.id
-  tenant_id    = data.azurerm_client_config.current.tenant_id
-  object_id    = azurerm_api_management.core.identity[0].principal_id
-
-  secret_permissions = [
-    "Get",
-    "List"
-  ]
-
-  certificate_permissions = [
-    "Get",
-    "List"
-  ]
 }
