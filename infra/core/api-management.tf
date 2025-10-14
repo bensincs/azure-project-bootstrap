@@ -36,7 +36,7 @@ resource "azurerm_api_management_api" "main" {
   protocols           = ["https"]
 
   subscription_required = false
-  service_url          = "https://httpbin.org"
+  service_url           = "https://httpbin.org"
 
   depends_on = [
     azurerm_container_app.api_service,
@@ -45,14 +45,70 @@ resource "azurerm_api_management_api" "main" {
   ]
 }
 
-# Add wildcard operation to catch all requests
-resource "azurerm_api_management_api_operation" "wildcard" {
-  operation_id        = "wildcard"
+# Add wildcard operations to catch all requests
+resource "azurerm_api_management_api_operation" "wildcard_get" {
+  operation_id        = "wildcard-get"
   api_name            = azurerm_api_management_api.main.name
   api_management_name = azurerm_api_management.core.name
   resource_group_name = azurerm_resource_group.core.name
-  display_name        = "Wildcard Operation"
-  method              = "*"
+  display_name        = "GET Wildcard"
+  method              = "GET"
+  url_template        = "/*"
+
+  response {
+    status_code = 200
+  }
+}
+
+resource "azurerm_api_management_api_operation" "wildcard_post" {
+  operation_id        = "wildcard-post"
+  api_name            = azurerm_api_management_api.main.name
+  api_management_name = azurerm_api_management.core.name
+  resource_group_name = azurerm_resource_group.core.name
+  display_name        = "POST Wildcard"
+  method              = "POST"
+  url_template        = "/*"
+
+  response {
+    status_code = 200
+  }
+}
+
+resource "azurerm_api_management_api_operation" "wildcard_put" {
+  operation_id        = "wildcard-put"
+  api_name            = azurerm_api_management_api.main.name
+  api_management_name = azurerm_api_management.core.name
+  resource_group_name = azurerm_resource_group.core.name
+  display_name        = "PUT Wildcard"
+  method              = "PUT"
+  url_template        = "/*"
+
+  response {
+    status_code = 200
+  }
+}
+
+resource "azurerm_api_management_api_operation" "wildcard_delete" {
+  operation_id        = "wildcard-delete"
+  api_name            = azurerm_api_management_api.main.name
+  api_management_name = azurerm_api_management.core.name
+  resource_group_name = azurerm_resource_group.core.name
+  display_name        = "DELETE Wildcard"
+  method              = "DELETE"
+  url_template        = "/*"
+
+  response {
+    status_code = 200
+  }
+}
+
+resource "azurerm_api_management_api_operation" "wildcard_options" {
+  operation_id        = "wildcard-options"
+  api_name            = azurerm_api_management_api.main.name
+  api_management_name = azurerm_api_management.core.name
+  resource_group_name = azurerm_resource_group.core.name
+  display_name        = "OPTIONS Wildcard"
+  method              = "OPTIONS"
   url_template        = "/*"
 
   response {
