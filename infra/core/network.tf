@@ -62,6 +62,14 @@ resource "azurerm_subnet" "dns_resolver_inbound" {
   }
 }
 
+# ============================================================================
+# APPLICATION GATEWAY - Subnet and Network Security Group
+# ============================================================================
+# App Gateway is the public entry point (Internet-facing)
+# - Receives HTTPS/HTTP from Internet
+# - Routes to APIM (internal, private IP)
+# - Handles SSL termination
+
 # Subnet for Application Gateway
 resource "azurerm_subnet" "app_gateway" {
   name                 = "snet-appgw-${var.environment}"
@@ -69,6 +77,89 @@ resource "azurerm_subnet" "app_gateway" {
   virtual_network_name = azurerm_virtual_network.core.name
   address_prefixes     = ["10.0.5.0/24"]
 }
+
+# Network Security Group for Application Gateway
+resource "azurerm_network_security_group" "app_gateway" {
+  name                = "nsg-appgw-${var.environment}"
+  resource_group_name = azurerm_resource_group.core.name
+  location            = azurerm_resource_group.core.location
+
+  tags = local.common_tags
+}
+
+# NSG Rule: Allow inbound HTTPS from Internet (public access)
+resource "azurerm_network_security_rule" "app_gateway_https_internet" {
+  name                        = "AllowHTTPSInbound"
+  priority                    = 110
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "443"
+  source_address_prefix       = "Internet"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.core.name
+  network_security_group_name = azurerm_network_security_group.app_gateway.name
+}
+
+# NSG Rule: Allow inbound HTTP from Internet (for redirect to HTTPS)
+resource "azurerm_network_security_rule" "app_gateway_http_internet" {
+  name                        = "AllowHTTPInbound"
+  priority                    = 120
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "80"
+  source_address_prefix       = "Internet"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.core.name
+  network_security_group_name = azurerm_network_security_group.app_gateway.name
+}
+
+# NSG Rule: Allow Azure infrastructure communication (REQUIRED for v2 SKU)
+resource "azurerm_network_security_rule" "app_gateway_infrastructure" {
+  name                        = "AllowGatewayManagerInbound"
+  priority                    = 130
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "65200-65535"
+  source_address_prefix       = "GatewayManager"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.core.name
+  network_security_group_name = azurerm_network_security_group.app_gateway.name
+}
+
+# NSG Rule: Allow Azure Load Balancer health probes
+resource "azurerm_network_security_rule" "app_gateway_load_balancer" {
+  name                        = "AllowAzureLoadBalancerInbound"
+  priority                    = 140
+  direction                   = "Inbound"
+  access                      = "Allow"
+  protocol                    = "*"
+  source_port_range           = "*"
+  destination_port_range      = "*"
+  source_address_prefix       = "AzureLoadBalancer"
+  destination_address_prefix  = "*"
+  resource_group_name         = azurerm_resource_group.core.name
+  network_security_group_name = azurerm_network_security_group.app_gateway.name
+}
+
+# Associate NSG with App Gateway subnet
+resource "azurerm_subnet_network_security_group_association" "app_gateway" {
+  subnet_id                 = azurerm_subnet.app_gateway.id
+  network_security_group_id = azurerm_network_security_group.app_gateway.id
+}
+
+# ============================================================================
+# API MANAGEMENT (APIM) - Subnet and Network Security Group
+# ============================================================================
+# APIM is internal-only (VNet mode, private IP)
+# - Receives HTTPS from App Gateway (10.0.5.0/24)
+# - Validates JWT tokens from Azure AD
+# - Routes to Container Apps (10.0.0.0/23)
 
 # Subnet for APIM
 resource "azurerm_subnet" "apim" {
@@ -102,16 +193,16 @@ resource "azurerm_network_security_rule" "apim_management" {
   network_security_group_name = azurerm_network_security_group.apim.name
 }
 
-# NSG Rule: Allow inbound HTTPS for API Gateway
-resource "azurerm_network_security_rule" "apim_https" {
-  name                        = "AllowHTTPS"
+# NSG Rule: Allow inbound HTTPS from Application Gateway to APIM
+resource "azurerm_network_security_rule" "apim_https_from_appgw" {
+  name                        = "AllowHTTPSFromAppGateway"
   priority                    = 110
   direction                   = "Inbound"
   access                      = "Allow"
   protocol                    = "Tcp"
   source_port_range           = "*"
   destination_port_range      = "443"
-  source_address_prefix       = "Internet"
+  source_address_prefix       = "10.0.5.0/24" # Application Gateway subnet
   destination_address_prefix  = "VirtualNetwork"
   resource_group_name         = azurerm_resource_group.core.name
   network_security_group_name = azurerm_network_security_group.apim.name
@@ -147,11 +238,34 @@ resource "azurerm_network_security_rule" "apim_sql" {
   network_security_group_name = azurerm_network_security_group.apim.name
 }
 
+# NSG Rule: Allow outbound to Container Apps
+resource "azurerm_network_security_rule" "apim_to_container_apps" {
+  name                        = "AllowContainerAppsOutbound"
+  priority                    = 120
+  direction                   = "Outbound"
+  access                      = "Allow"
+  protocol                    = "Tcp"
+  source_port_range           = "*"
+  destination_port_range      = "443"
+  source_address_prefix       = "VirtualNetwork"
+  destination_address_prefix  = "10.0.0.0/23" # Container Apps subnet
+  resource_group_name         = azurerm_resource_group.core.name
+  network_security_group_name = azurerm_network_security_group.apim.name
+}
+
 # Associate NSG with APIM Subnet
 resource "azurerm_subnet_network_security_group_association" "apim" {
   subnet_id                 = azurerm_subnet.apim.id
   network_security_group_id = azurerm_network_security_group.apim.id
 }
+
+# ============================================================================
+# CONTAINER APPS - Network Security Group
+# ============================================================================
+# Container Apps are fully private (internal load balancer)
+# - Only accepts HTTPS from APIM (10.0.6.0/27)
+# - No direct Internet or App Gateway access
+# - Subnet: 10.0.0.0/23 (defined earlier with delegation)
 
 # Network Security Group for Container Apps
 resource "azurerm_network_security_group" "container_apps" {
@@ -161,17 +275,16 @@ resource "azurerm_network_security_group" "container_apps" {
 
   tags = local.common_tags
 }
-
-# NSG Rule: Allow inbound from Application Gateway subnet to Container Apps
-resource "azurerm_network_security_rule" "container_apps_from_appgw" {
-  name                        = "AllowAppGatewayInbound"
+# NSG Rule: Allow inbound from APIM subnet to Container Apps
+resource "azurerm_network_security_rule" "container_apps_from_apim" {
+  name                        = "AllowAPIMInbound"
   priority                    = 100
   direction                   = "Inbound"
   access                      = "Allow"
   protocol                    = "Tcp"
   source_port_range           = "*"
-  destination_port_ranges     = ["80", "443"]
-  source_address_prefix       = "10.0.5.0/24" # Application Gateway subnet
+  destination_port_range      = "443"
+  source_address_prefix       = "10.0.6.0/27" # APIM subnet
   destination_address_prefix  = "*"
   resource_group_name         = azurerm_resource_group.core.name
   network_security_group_name = azurerm_network_security_group.container_apps.name

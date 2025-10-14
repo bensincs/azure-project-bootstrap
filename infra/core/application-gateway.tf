@@ -21,37 +21,7 @@ resource "azurerm_public_ip" "app_gateway" {
   tags = local.common_tags
 }
 
-# Network Security Group for Application Gateway
-resource "azurerm_network_security_group" "app_gateway" {
-  name                = "vnet-${var.resource_name_prefix}-snet-appgw-${var.environment}-nsg-${var.location}"
-  resource_group_name = azurerm_resource_group.core.name
-  location            = azurerm_resource_group.core.location
-
-  tags = local.common_tags
-}
-
-# NSG Rule: Allow inbound HTTP from VNet (APIM traffic)
-resource "azurerm_network_security_rule" "app_gateway_http" {
-  name                        = "AllowVNetHTTPInbound"
-  priority                    = 100
-  direction                   = "Inbound"
-  access                      = "Allow"
-  protocol                    = "Tcp"
-  source_port_range           = "*"
-  destination_port_range      = "80"
-  source_address_prefix       = "VirtualNetwork"
-  destination_address_prefix  = "*"
-  resource_group_name         = azurerm_resource_group.core.name
-  network_security_group_name = azurerm_network_security_group.app_gateway.name
-}
-
-# Associate NSG with App Gateway subnet
-resource "azurerm_subnet_network_security_group_association" "app_gateway" {
-  subnet_id                 = azurerm_subnet.app_gateway.id
-  network_security_group_id = azurerm_network_security_group.app_gateway.id
-}
-
-# Application Gateway (internal, HTTP-only)
+# Application Gateway
 resource "azurerm_application_gateway" "core" {
   name                = "appgw-${var.resource_name_prefix}-${var.environment}"
   resource_group_name = azurerm_resource_group.core.name
