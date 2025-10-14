@@ -37,27 +37,26 @@ resource "azurerm_api_management_api" "main" {
 
   subscription_required = false
 
-  # APIM will route directly to Container Apps private endpoints
-  service_url = "https://${azurerm_container_app.api_service.ingress[0].fqdn}"
+  # Temporary placeholder URL - will be overridden by policy
+  service_url = "https://httpbin.org"
+  
+  depends_on = [
+    azurerm_container_app.api_service,
+    azurerm_container_app.ui_service,
+    azurerm_container_app.notification_service,
+  ]
 }
 
-# API Management Policy - Routing to Container Apps
+# API Management Policy - CORS only for testing
 resource "azurerm_api_management_api_policy" "main" {
   api_name            = azurerm_api_management_api.main.name
   api_management_name = azurerm_api_management.core.name
   resource_group_name = azurerm_resource_group.core.name
 
-  xml_content = templatefile("${path.module}/apim-policy.xml", {
-    API_SERVICE_FQDN          = azurerm_container_app.api_service.ingress[0].fqdn
-    NOTIFICATION_SERVICE_FQDN = azurerm_container_app.notification_service.ingress[0].fqdn
-    UI_SERVICE_FQDN           = azurerm_container_app.ui_service.ingress[0].fqdn
-  })
+  xml_content = file("${path.module}/apim-policy.xml")
 
   depends_on = [
     azurerm_api_management_api.main,
-    azurerm_container_app.api_service,
-    azurerm_container_app.ui_service,
-    azurerm_container_app.notification_service,
   ]
 }
 
