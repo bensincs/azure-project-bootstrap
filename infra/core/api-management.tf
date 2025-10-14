@@ -41,24 +41,16 @@ resource "azurerm_api_management_api" "main" {
   service_url = "https://${azurerm_container_app.api_service.ingress[0].fqdn}"
 }
 
-# API Management Policy - JWT Validation
+# API Management Policy - Minimal test policy
 resource "azurerm_api_management_api_policy" "main" {
   api_name            = azurerm_api_management_api.main.name
   api_management_name = azurerm_api_management.core.name
   resource_group_name = azurerm_resource_group.core.name
 
-  xml_content = templatefile("${path.module}/apim-policy.xml", {
-    TENANT_ID                 = data.azuread_client_config.current.tenant_id
-    CLIENT_ID                 = azuread_application.main.client_id
-    API_SERVICE_FQDN          = azurerm_container_app.api_service.ingress[0].fqdn
-    NOTIFICATION_SERVICE_FQDN = azurerm_container_app.notification_service.ingress[0].fqdn
-    UI_SERVICE_FQDN           = azurerm_container_app.ui_service.ingress[0].fqdn
-  })
+  xml_content = file("${path.module}/apim-policy.xml")
 
   depends_on = [
     azurerm_api_management_api.main,
-    azurerm_container_app.api_service,
-    azurerm_container_app.ui_service,
-    azurerm_container_app.notification_service,
   ]
 }
+
