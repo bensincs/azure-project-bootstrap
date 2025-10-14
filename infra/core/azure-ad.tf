@@ -5,14 +5,49 @@ resource "azuread_application" "main" {
   display_name = "app-${var.resource_name_prefix}-${var.environment}"
   owners       = [data.azuread_client_config.current.object_id]
 
+  # Enable group membership claims in the token
+  group_membership_claims = ["SecurityGroup", "DirectoryRole"]
+
+  # Optional claims - include groups in both access tokens and ID tokens
+  optional_claims {
+    access_token {
+      name = "groups"
+    }
+
+    id_token {
+      name = "groups"
+    }
+  }
+
   # Web application configuration
   web {
-    homepage_url = "https://${azurerm_api_management.core.gateway_url}"
+    homepage_url = "https://${azurerm_public_ip.app_gateway.ip_address}"
 
     implicit_grant {
       access_token_issuance_enabled = true
       id_token_issuance_enabled     = true
     }
+
+    redirect_uris = [
+      "https://${azurerm_public_ip.app_gateway.ip_address}",
+      "https://${azurerm_public_ip.app_gateway.ip_address}/",
+      "http://localhost:5173",      # Vite dev server
+      "http://localhost:5173/",
+      "http://localhost:3000",      # Alternative dev port
+      "http://localhost:3000/"
+    ]
+  }
+
+  # Single Page Application configuration
+  single_page_application {
+    redirect_uris = [
+      "https://${azurerm_public_ip.app_gateway.ip_address}",
+      "https://${azurerm_public_ip.app_gateway.ip_address}/",
+      "http://localhost:5173",      # Vite dev server
+      "http://localhost:5173/",
+      "http://localhost:3000",      # Alternative dev port
+      "http://localhost:3000/"
+    ]
   }
 
   # Required resource access (Microsoft Graph)
@@ -41,6 +76,11 @@ resource "azuread_application" "main" {
 
     resource_access {
       id   = "14dad69e-099b-42c9-810b-d002981feec1" # profile
+      type = "Scope"
+    }
+
+    resource_access {
+      id   = "7ab1d382-f21e-4acd-a863-ba3e13f7da61" # Directory.Read.All (to read group details)
       type = "Scope"
     }
   }

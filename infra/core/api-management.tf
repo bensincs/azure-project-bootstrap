@@ -51,21 +51,69 @@ resource "azurerm_api_management_api_policy" "main" {
 <policies>
     <inbound>
         <base />
-        <!-- Validate JWT tokens from Azure AD -->
-        <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized. Valid JWT token required.">
-            <openid-config url="https://login.microsoftonline.com/${data.azuread_client_config.current.tenant_id}/v2.0/.well-known/openid-configuration" />
-            <audiences>
-                <audience>${azuread_application.main.client_id}</audience>
-            </audiences>
-            <issuers>
-                <issuer>https://login.microsoftonline.com/${data.azuread_client_config.current.tenant_id}/v2.0</issuer>
-            </issuers>
-            <required-claims>
-                <claim name="aud" match="any">
-                    <value>${azuread_application.main.client_id}</value>
-                </claim>
-            </required-claims>
-        </validate-jwt>
+        
+        <!-- Skip JWT validation for UI requests (/, /assets/*, /favicon.ico, etc.) and health endpoints -->
+        <!-- JWT is required for /api/* and /notify/* and /ws/* (except health endpoints) -->
+        <choose>
+            <when condition="@(context.Request.Url.Path.Equals("/health") || context.Request.Url.Path.Equals("/api/health") || context.Request.Url.Path.Equals("/notify/health"))">
+                <!-- Health endpoints - no JWT validation required -->
+            </when>
+            <when condition="@(context.Request.Url.Path.StartsWith("/api") || context.Request.Url.Path.StartsWith("/notify") || context.Request.Url.Path.StartsWith("/ws"))">
+                <!-- Validate JWT tokens from Azure AD for API and notification endpoints -->
+                <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized. Valid JWT token required.">
+                    <openid-config url="https://login.microsoftonline.com/${data.azuread_client_config.current.tenant_id}/v2.0/.well-known/openid-configuration" />
+                    <audiences>
+                        <audience>${azuread_application.main.client_id}</audience>
+                    </audiences>
+                    <issuers>
+                        <issuer>https://login.microsoftonline.com/${data.azuread_client_config.current.tenant_id}/v2.0</issuer>
+                    </issuers>
+                    <required-claims>
+                        <claim name="aud" match="any">
+                            <value>${azuread_application.main.client_id}</value>
+                        </claim>
+                    </required-claims>
+                </validate-jwt>
+                
+                <!-- Add user claims as headers for authenticated requests -->
+                <set-header name="X-User-Email" exists-action="override">
+                    <value>@(context.Request.Headers.GetValueOrDefault("Authorization","")
+                        .Replace("Bearer ", "")
+                        .AsJwt()?.Claims.GetValueOrDefault("email", ""))</value>
+                </set-header>
+                <set-header name="X-User-OID" exists-action="override">
+                    <value>@(context.Request.Headers.GetValueOrDefault("Authorization","")
+                        .Replace("Bearer ", "")
+                        .AsJwt()?.Claims.GetValueOrDefault("oid", ""))</value>
+                </set-header>
+                <set-header name="X-User-Name" exists-action="override">
+                    <value>@(context.Request.Headers.GetValueOrDefault("Authorization","")
+                        .Replace("Bearer ", "")
+                        .AsJwt()?.Claims.GetValueOrDefault("name", ""))</value>
+                </set-header>
+                
+                <!-- Add user groups for RBAC -->
+                <set-header name="X-User-Groups" exists-action="override">
+                    <value>@{
+                        var jwt = context.Request.Headers.GetValueOrDefault("Authorization","").Replace("Bearer ", "").AsJwt();
+                        var groups = jwt?.Claims.GetValueOrDefault("groups", "");
+                        return groups;
+                    }</value>
+                </set-header>
+                
+                <!-- Add user roles (if using App Roles) -->
+                <set-header name="X-User-Roles" exists-action="override">
+                    <value>@{
+                        var jwt = context.Request.Headers.GetValueOrDefault("Authorization","").Replace("Bearer ", "").AsJwt();
+                        var roles = jwt?.Claims.GetValueOrDefault("roles", "");
+                        return roles;
+                    }</value>
+                </set-header>
+            </when>
+            <otherwise>
+                <!-- UI requests - no JWT validation, no user headers -->
+            </otherwise>
+        </choose>
 
         <!-- Route directly to Container Apps based on path -->
         <choose>
@@ -83,23 +131,6 @@ resource "azurerm_api_management_api_policy" "main" {
         <!-- Forward original host header -->
         <set-header name="X-Forwarded-Host" exists-action="override">
             <value>@(context.Request.OriginalUrl.Host)</value>
-        </set-header>
-
-        <!-- Add user claims as headers for backend services -->
-        <set-header name="X-User-Email" exists-action="override">
-            <value>@(context.Request.Headers.GetValueOrDefault("Authorization","")
-                .Replace("Bearer ", "")
-                .AsJwt()?.Claims.GetValueOrDefault("email", ""))</value>
-        </set-header>
-        <set-header name="X-User-OID" exists-action="override">
-            <value>@(context.Request.Headers.GetValueOrDefault("Authorization","")
-                .Replace("Bearer ", "")
-                .AsJwt()?.Claims.GetValueOrDefault("oid", ""))</value>
-        </set-header>
-        <set-header name="X-User-Name" exists-action="override">
-            <value>@(context.Request.Headers.GetValueOrDefault("Authorization","")
-                .Replace("Bearer ", "")
-                .AsJwt()?.Claims.GetValueOrDefault("name", ""))</value>
         </set-header>
 
         <!-- CORS policy -->
@@ -137,63 +168,4 @@ XML
   depends_on = [
     azurerm_api_management_api.main
   ]
-}
-
-# API Operations - Define your API endpoints
-
-# Health check endpoint (no JWT required)
-resource "azurerm_api_management_api_operation" "health" {
-  operation_id        = "health"
-  api_name            = azurerm_api_management_api.main.name
-  api_management_name = azurerm_api_management.core.name
-  resource_group_name = azurerm_resource_group.core.name
-  display_name        = "Health Check"
-  method              = "GET"
-  url_template        = "/health"
-  description         = "Health check endpoint"
-}
-
-# Override policy for health endpoint - no JWT validation
-resource "azurerm_api_management_api_operation_policy" "health" {
-  api_name            = azurerm_api_management_api.main.name
-  api_management_name = azurerm_api_management.core.name
-  resource_group_name = azurerm_resource_group.core.name
-  operation_id        = azurerm_api_management_api_operation.health.operation_id
-
-  xml_content = <<XML
-<policies>
-    <inbound>
-        <base />
-        <!-- Skip JWT validation for health check -->
-        <return-response>
-            <set-status code="200" />
-            <set-header name="Content-Type" exists-action="override">
-                <value>application/json</value>
-            </set-header>
-            <set-body>{"status":"healthy"}</set-body>
-        </return-response>
-    </inbound>
-    <backend>
-        <base />
-    </backend>
-    <outbound>
-        <base />
-    </outbound>
-    <on-error>
-        <base />
-    </on-error>
-</policies>
-XML
-}
-
-# Catch-all operation for all other endpoints (JWT required)
-resource "azurerm_api_management_api_operation" "catchall" {
-  operation_id        = "catchall"
-  api_name            = azurerm_api_management_api.main.name
-  api_management_name = azurerm_api_management.core.name
-  resource_group_name = azurerm_resource_group.core.name
-  display_name        = "All Endpoints"
-  method              = "*"
-  url_template        = "/*"
-  description         = "All API endpoints (JWT required)"
 }

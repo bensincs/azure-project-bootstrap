@@ -72,6 +72,109 @@ app.MapGet("/api/hello/{name}", (string name) => Results.Ok(new
     .WithName("GetHelloWithName")
     .WithOpenApi();
 
+// User info endpoint - returns user details from APIM headers
+app.MapGet("/api/user/me", (HttpContext context) =>
+{
+    // Get user claims from APIM headers
+    var email = context.Request.Headers["X-User-Email"].FirstOrDefault();
+    var oid = context.Request.Headers["X-User-OID"].FirstOrDefault();
+    var name = context.Request.Headers["X-User-Name"].FirstOrDefault();
+    var groupsHeader = context.Request.Headers["X-User-Groups"].FirstOrDefault();
+    var rolesHeader = context.Request.Headers["X-User-Roles"].FirstOrDefault();
+
+    // Parse groups and roles (they come as JSON arrays or comma-separated)
+    string[]? groups = null;
+    string[]? roles = null;
+
+    try
+    {
+        if (!string.IsNullOrEmpty(groupsHeader))
+        {
+            groups = System.Text.Json.JsonSerializer.Deserialize<string[]>(groupsHeader);
+        }
+    }
+    catch
+    {
+        // If not JSON, try splitting by comma
+        groups = groupsHeader?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    try
+    {
+        if (!string.IsNullOrEmpty(rolesHeader))
+        {
+            roles = System.Text.Json.JsonSerializer.Deserialize<string[]>(rolesHeader);
+        }
+    }
+    catch
+    {
+        // If not JSON, try splitting by comma
+        roles = rolesHeader?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    return Results.Ok(new
+    {
+        email = email ?? "unknown",
+        oid = oid ?? "unknown",
+        name = name ?? "unknown",
+        groups = groups ?? Array.Empty<string>(),
+        roles = roles ?? Array.Empty<string>(),
+        groupCount = groups?.Length ?? 0,
+        roleCount = roles?.Length ?? 0,
+        timestamp = DateTime.UtcNow
+    });
+})
+    .WithName("GetCurrentUser")
+    .WithOpenApi()
+    .WithDescription("Returns current user information including groups and roles from Azure AD");
+
+// Admin-only endpoint example - checks for Admin role
+app.MapGet("/api/admin/test", (HttpContext context) =>
+{
+    var rolesHeader = context.Request.Headers["X-User-Roles"].FirstOrDefault();
+    var name = context.Request.Headers["X-User-Name"].FirstOrDefault();
+    
+    string[]? roles = null;
+    try
+    {
+        if (!string.IsNullOrEmpty(rolesHeader))
+        {
+            roles = System.Text.Json.JsonSerializer.Deserialize<string[]>(rolesHeader);
+        }
+    }
+    catch
+    {
+        roles = rolesHeader?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+    }
+
+    // Check if user has Admin role
+    var isAdmin = roles?.Contains("Admin", StringComparer.OrdinalIgnoreCase) ?? false;
+
+    if (!isAdmin)
+    {
+        return Results.Json(
+            new { error = "Forbidden", message = "This endpoint requires Admin role" },
+            statusCode: 403
+        );
+    }
+
+    return Results.Ok(new
+    {
+        message = $"Welcome, Admin {name}!",
+        adminFeatures = new[]
+        {
+            "User Management",
+            "System Configuration",
+            "Audit Logs",
+            "Advanced Analytics"
+        },
+        timestamp = DateTime.UtcNow
+    });
+})
+    .WithName("AdminTest")
+    .WithOpenApi()
+    .WithDescription("Admin-only endpoint - requires Admin role");
+
 // Root endpoint
 app.MapGet("/", () => Results.Ok(new
 {
@@ -83,6 +186,8 @@ app.MapGet("/", () => Results.Ok(new
         "/api/health",
         "/api/hello",
         "/api/hello/{name}",
+        "/api/user/me",
+        "/api/admin/test",
         "/swagger"
     }
 }))
