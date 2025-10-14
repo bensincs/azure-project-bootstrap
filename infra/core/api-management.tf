@@ -39,7 +39,7 @@ resource "azurerm_api_management_api" "main" {
 
   # Temporary placeholder URL - will be overridden by policy
   service_url = "https://httpbin.org"
-  
+
   depends_on = [
     azurerm_container_app.api_service,
     azurerm_container_app.ui_service,

@@ -1,8 +1,6 @@
 <policies>
     <inbound>
         <base />
-        
-        <!-- CORS policy -->
         <cors allow-credentials="true">
             <allowed-origins>
                 <origin>*</origin>
