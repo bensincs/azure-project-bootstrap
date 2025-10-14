@@ -11,16 +11,16 @@
             <when condition="@(context.Request.Url.Path.StartsWith("/api") || context.Request.Url.Path.StartsWith("/notify") || context.Request.Url.Path.StartsWith("/ws"))">
                 <!-- Validate JWT tokens from Azure AD for API and notification endpoints -->
                 <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized. Valid JWT token required.">
-                    <openid-config url="https://login.microsoftonline.com/{{TENANT_ID}}/v2.0/.well-known/openid-configuration" />
+                    <openid-config url="https://login.microsoftonline.com/${TENANT_ID}/v2.0/.well-known/openid-configuration" />
                     <audiences>
-                        <audience>{{CLIENT_ID}}</audience>
+                        <audience>${CLIENT_ID}</audience>
                     </audiences>
                     <issuers>
-                        <issuer>https://login.microsoftonline.com/{{TENANT_ID}}/v2.0</issuer>
+                        <issuer>https://login.microsoftonline.com/${TENANT_ID}/v2.0</issuer>
                     </issuers>
                     <required-claims>
                         <claim name="aud" match="any">
-                            <value>{{CLIENT_ID}}</value>
+                            <value>${CLIENT_ID}</value>
                         </claim>
                     </required-claims>
                 </validate-jwt>
@@ -68,13 +68,13 @@
         <!-- Route directly to Container Apps based on path -->
         <choose>
             <when condition="@(context.Request.Url.Path.StartsWith("/api"))">
-                <set-backend-service base-url="https://{{API_SERVICE_FQDN}}" />
+                <set-backend-service base-url="https://${API_SERVICE_FQDN}" />
             </when>
             <when condition="@(context.Request.Url.Path.StartsWith("/notify") || context.Request.Url.Path.StartsWith("/ws"))">
-                <set-backend-service base-url="https://{{NOTIFICATION_SERVICE_FQDN}}" />
+                <set-backend-service base-url="https://${NOTIFICATION_SERVICE_FQDN}" />
             </when>
             <otherwise>
-                <set-backend-service base-url="https://{{UI_SERVICE_FQDN}}" />
+                <set-backend-service base-url="https://${UI_SERVICE_FQDN}" />
             </otherwise>
         </choose>
 
