@@ -166,6 +166,9 @@ resource "azurerm_api_management_api_policy" "main" {
 XML
 
   depends_on = [
-    azurerm_api_management_api.main
+    azurerm_api_management_api.main,
+    azurerm_container_app.api_service,
+    azurerm_container_app.ui_service,
+    azurerm_container_app.notification_service,
   ]
 }
