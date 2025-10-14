@@ -1,21 +1,20 @@
 <policies>
     <inbound>
         <base />
-        <cors allow-credentials="true">
-            <allowed-origins>
-                <origin>*</origin>
-            </allowed-origins>
-            <allowed-methods>
-                <method>GET</method>
-                <method>POST</method>
-                <method>PUT</method>
-                <method>DELETE</method>
-                <method>OPTIONS</method>
-            </allowed-methods>
-            <allowed-headers>
-                <header>*</header>
-            </allowed-headers>
-        </cors>
+        <choose>
+            <when condition="@(context.Request.Url.Path.StartsWith("/api"))">
+                <set-backend-service base-url="https://${API_SERVICE_FQDN}" />
+            </when>
+            <when condition="@(context.Request.Url.Path.StartsWith("/notify") || context.Request.Url.Path.StartsWith("/ws"))">
+                <set-backend-service base-url="https://${NOTIFICATION_SERVICE_FQDN}" />
+            </when>
+            <otherwise>
+                <set-backend-service base-url="https://${UI_SERVICE_FQDN}" />
+            </otherwise>
+        </choose>
+        <set-header name="X-Forwarded-Host" exists-action="override">
+            <value>@(context.Request.OriginalUrl.Host)</value>
+        </set-header>
     </inbound>
     <backend>
         <base />
