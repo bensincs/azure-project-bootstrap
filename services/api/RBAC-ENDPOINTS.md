@@ -121,8 +121,8 @@ try
 }
 catch
 {
-    roles = rolesHeader?.Split(',', 
-        StringSplitOptions.RemoveEmptyEntries | 
+    roles = rolesHeader?.Split(',',
+        StringSplitOptions.RemoveEmptyEntries |
         StringSplitOptions.TrimEntries);
 }
 ```
@@ -133,12 +133,12 @@ catch
 app.MapGet("/api/admin/test", (HttpContext context) =>
 {
     var rolesHeader = context.Request.Headers["X-User-Roles"].FirstOrDefault();
-    
+
     string[]? roles = null;
     // ... parse roles ...
-    
+
     var isAdmin = roles?.Contains("Admin", StringComparer.OrdinalIgnoreCase) ?? false;
-    
+
     if (!isAdmin)
     {
         return Results.Json(
@@ -146,7 +146,7 @@ app.MapGet("/api/admin/test", (HttpContext context) =>
             statusCode: 403
         );
     }
-    
+
     // Admin-only logic here
     return Results.Ok(new { message = "Admin access granted" });
 });
@@ -173,8 +173,8 @@ app.MapGet("/api/admin/test", (HttpContext context) =>
        { "12345678-...", "app-admins" },
        { "87654321-...", "app-users" }
    };
-   
-   var isAdmin = groups?.Any(g => 
+
+   var isAdmin = groups?.Any(g =>
        groupMapping.GetValueOrDefault(g) == "app-admins") ?? false;
    ```
 

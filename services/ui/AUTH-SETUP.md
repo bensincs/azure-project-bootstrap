@@ -234,19 +234,19 @@ export async function apiCall<T>(
 // Convenience methods
 export const api = {
   get: <T>(endpoint: string) => apiCall<T>(endpoint, { method: 'GET' }),
-  
+
   post: <T>(endpoint: string, data: any) =>
     apiCall<T>(endpoint, {
       method: 'POST',
       body: JSON.stringify(data),
     }),
-  
+
   put: <T>(endpoint: string, data: any) =>
     apiCall<T>(endpoint, {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
-  
+
   delete: <T>(endpoint: string) => apiCall<T>(endpoint, { method: 'DELETE' }),
 };
 ```
@@ -402,7 +402,7 @@ export default UserProfile;
 
 3. **Error Handling**: Handle `InteractionRequiredAuthError` when tokens expire or consent is needed.
 
-4. **Security**: 
+4. **Security**:
    - Never store tokens in localStorage if you're concerned about XSS attacks
    - Always use HTTPS in production
    - Set appropriate token lifetimes in Azure AD

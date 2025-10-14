@@ -51,7 +51,7 @@ resource "azurerm_api_management_api_policy" "main" {
 <policies>
     <inbound>
         <base />
-        
+
         <!-- Skip JWT validation for UI requests (/, /assets/*, /favicon.ico, etc.) and health endpoints -->
         <!-- JWT is required for /api/* and /notify/* and /ws/* (except health endpoints) -->
         <choose>
@@ -74,7 +74,7 @@ resource "azurerm_api_management_api_policy" "main" {
                         </claim>
                     </required-claims>
                 </validate-jwt>
-                
+
                 <!-- Add user claims as headers for authenticated requests -->
                 <set-header name="X-User-Email" exists-action="override">
                     <value>@(context.Request.Headers.GetValueOrDefault("Authorization","")
@@ -91,7 +91,7 @@ resource "azurerm_api_management_api_policy" "main" {
                         .Replace("Bearer ", "")
                         .AsJwt()?.Claims.GetValueOrDefault("name", ""))</value>
                 </set-header>
-                
+
                 <!-- Add user groups for RBAC -->
                 <set-header name="X-User-Groups" exists-action="override">
                     <value>@{
@@ -100,7 +100,7 @@ resource "azurerm_api_management_api_policy" "main" {
                         return groups;
                     }</value>
                 </set-header>
-                
+
                 <!-- Add user roles (if using App Roles) -->
                 <set-header name="X-User-Roles" exists-action="override">
                     <value>@{

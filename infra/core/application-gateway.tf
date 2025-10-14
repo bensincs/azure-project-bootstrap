@@ -102,7 +102,7 @@ resource "azurerm_application_gateway" "core" {
     name                          = "private-frontend-ip-config"
     subnet_id                     = azurerm_subnet.app_gateway.id
     private_ip_address_allocation = "Static"
-    private_ip_address            = "10.0.5.10"  # Must be within app_gateway subnet range (10.0.5.0/24)
+    private_ip_address            = "10.0.5.10" # Must be within app_gateway subnet range (10.0.5.0/24)
   }
 
   # Backend pools - pointing to APIM

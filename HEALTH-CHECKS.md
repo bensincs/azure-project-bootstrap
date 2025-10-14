@@ -5,9 +5,9 @@ All services provide health check endpoints that can be accessed **without JWT a
 ## Available Health Endpoints
 
 ### 1. API Service Health Check
-**Endpoint**: `/api/health`  
-**Method**: `GET`  
-**Authentication**: None required  
+**Endpoint**: `/api/health`
+**Method**: `GET`
+**Authentication**: None required
 
 **Response**:
 ```json
@@ -27,9 +27,9 @@ curl https://<api-service-fqdn>/api/health
 ```
 
 ### 2. Notification Service Health Check
-**Endpoint**: `/notify/health`  
-**Method**: `GET`  
-**Authentication**: None required  
+**Endpoint**: `/notify/health`
+**Method**: `GET`
+**Authentication**: None required
 
 **Response**:
 ```json
@@ -52,9 +52,9 @@ curl https://<notification-service-fqdn>/api/health
 **Note**: The notification service exposes `/api/health` internally, but APIM routes `/notify/*` to this service, so the public path is `/notify/health`.
 
 ### 3. Generic Health Check
-**Endpoint**: `/health`  
-**Method**: `GET`  
-**Authentication**: None required  
+**Endpoint**: `/health`
+**Method**: `GET`
+**Authentication**: None required
 
 This endpoint routes to the UI service by default (since it doesn't match `/api` or `/notify` paths).
 
@@ -69,8 +69,8 @@ curl https://<app-gateway-ip>/health
 The APIM policy explicitly excludes these paths from JWT validation:
 
 ```xml
-<when condition="@(context.Request.Url.Path.Equals("/health") || 
-                   context.Request.Url.Path.Equals("/api/health") || 
+<when condition="@(context.Request.Url.Path.Equals("/health") ||
+                   context.Request.Url.Path.Equals("/api/health") ||
                    context.Request.Url.Path.Equals("/notify/health"))">
     <!-- Health endpoints - no JWT validation required -->
 </when>
@@ -101,7 +101,7 @@ probe {
   timeout             = 30
   unhealthy_threshold = 3
   host                = "<apim-private-ip>"
-  
+
   match {
     status_code = ["200"]
   }
@@ -114,7 +114,7 @@ liveness_probe {
   transport = "HTTP"
   path      = "/api/health"
   port      = 8080
-  
+
   initial_delay_seconds = 30
   interval_seconds      = 30
   timeout_seconds       = 10
@@ -125,7 +125,7 @@ readiness_probe {
   transport = "HTTP"
   path      = "/api/health"
   port      = 8080
-  
+
   initial_delay_seconds = 5
   interval_seconds      = 10
   timeout_seconds       = 5

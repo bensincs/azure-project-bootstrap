@@ -133,7 +133,7 @@ app.MapGet("/api/admin/test", (HttpContext context) =>
 {
     var rolesHeader = context.Request.Headers["X-User-Roles"].FirstOrDefault();
     var name = context.Request.Headers["X-User-Name"].FirstOrDefault();
-    
+
     string[]? roles = null;
     try
     {

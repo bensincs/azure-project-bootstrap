@@ -29,24 +29,17 @@ resource "azuread_application" "main" {
     }
 
     redirect_uris = [
-      "https://${azurerm_public_ip.app_gateway.ip_address}",
       "https://${azurerm_public_ip.app_gateway.ip_address}/",
-      "http://localhost:5173",      # Vite dev server
-      "http://localhost:5173/",
-      "http://localhost:3000",      # Alternative dev port
-      "http://localhost:3000/"
+      "http://localhost:5173/", # Vite dev server
     ]
   }
 
   # Single Page Application configuration
   single_page_application {
     redirect_uris = [
-      "https://${azurerm_public_ip.app_gateway.ip_address}",
       "https://${azurerm_public_ip.app_gateway.ip_address}/",
-      "http://localhost:5173",      # Vite dev server
-      "http://localhost:5173/",
-      "http://localhost:3000",      # Alternative dev port
-      "http://localhost:3000/"
+      "http://localhost:5173/", # Vite dev server
+
     ]
   }
 
