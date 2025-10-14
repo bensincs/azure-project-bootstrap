@@ -1,25 +1,7 @@
 <policies>
     <inbound>
         <base />
-
-        <!-- Route to Container Apps based on path -->
-        <choose>
-            <when condition="@(context.Request.Url.Path.StartsWith("/api"))">
-                <set-backend-service base-url="https://${API_SERVICE_FQDN}" />
-            </when>
-            <when condition="@(context.Request.Url.Path.StartsWith("/notify") || context.Request.Url.Path.StartsWith("/ws"))">
-                <set-backend-service base-url="https://${NOTIFICATION_SERVICE_FQDN}" />
-            </when>
-            <otherwise>
-                <set-backend-service base-url="https://${UI_SERVICE_FQDN}" />
-            </otherwise>
-        </choose>
-
-        <!-- Forward original host header -->
-        <set-header name="X-Forwarded-Host" exists-action="override">
-            <value>@(context.Request.OriginalUrl.Host)</value>
-        </set-header>
-
+        
         <!-- CORS policy -->
         <cors allow-credentials="true">
             <allowed-origins>
@@ -35,9 +17,6 @@
             <allowed-headers>
                 <header>*</header>
             </allowed-headers>
-            <expose-headers>
-                <header>*</header>
-            </expose-headers>
         </cors>
     </inbound>
     <backend>
