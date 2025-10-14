@@ -151,6 +151,13 @@ resource "azurerm_network_security_rule" "app_gateway_load_balancer" {
 resource "azurerm_subnet_network_security_group_association" "app_gateway" {
   subnet_id                 = azurerm_subnet.app_gateway.id
   network_security_group_id = azurerm_network_security_group.app_gateway.id
+
+  depends_on = [
+    azurerm_network_security_rule.app_gateway_https_internet,
+    azurerm_network_security_rule.app_gateway_http_internet,
+    azurerm_network_security_rule.app_gateway_infrastructure,
+    azurerm_network_security_rule.app_gateway_load_balancer,
+  ]
 }
 
 # ============================================================================

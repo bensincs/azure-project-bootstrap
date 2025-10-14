@@ -69,7 +69,7 @@ locals {
 
   mcaps_tags = {
     SecurityControl = "Ignore"
-    CostControl = "Ignore"
+    CostControl     = "Ignore"
   }
 }
 
@@ -98,7 +98,7 @@ resource "azurerm_storage_account" "state" {
 
 resource "azurerm_storage_container" "state" {
   name                  = "tfstate"
-  storage_account_id    = azurerm_storage_account.state.id
+  storage_account_name  = azurerm_storage_account.state.name
   container_access_type = "private"
 }
 
@@ -127,6 +127,22 @@ resource "azurerm_role_assignment" "github_actions_owner" {
   scope                = "/subscriptions/${var.subscription_id}"
   role_definition_name = "Owner"
   principal_id         = azuread_service_principal.github_actions.object_id
+}
+
+# Data source to get the Application Administrator directory role
+data "azuread_directory_roles" "roles" {}
+
+locals {
+  app_admin_role = [
+    for role in data.azuread_directory_roles.roles.roles :
+    role if role.display_name == "Application Administrator"
+  ][0]
+}
+
+# Grant the service principal Application Administrator role to create app registrations
+resource "azuread_directory_role_assignment" "github_actions_app_admin" {
+  role_id             = local.app_admin_role.object_id
+  principal_object_id = azuread_service_principal.github_actions.object_id
 }
 
 # Federated identity credential for GitHub Actions on main branch

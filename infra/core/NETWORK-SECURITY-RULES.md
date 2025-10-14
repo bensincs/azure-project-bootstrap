@@ -199,7 +199,7 @@ Internet (Users)
 ## Common Troubleshooting
 
 ### Issue: 401 Unauthorized
-**Symptom**: API requests fail with 401  
+**Symptom**: API requests fail with 401
 **Check**:
 1. JWT token present in Authorization header?
 2. Token from correct Azure AD tenant?
@@ -207,7 +207,7 @@ Internet (Users)
 4. Path requires JWT? (Check APIM policy exclusions)
 
 ### Issue: 502 Bad Gateway
-**Symptom**: App Gateway returns 502  
+**Symptom**: App Gateway returns 502
 **Check**:
 1. APIM healthy? Check `/status-0123456789abcdef`
 2. NSG rule allows App Gateway → APIM on 443?
@@ -215,7 +215,7 @@ Internet (Users)
 4. APIM gateway URL resolves correctly?
 
 ### Issue: 503 Service Unavailable
-**Symptom**: APIM returns 503  
+**Symptom**: APIM returns 503
 **Check**:
 1. Container Apps running? `az containerapp list`
 2. NSG rule allows APIM → Container Apps on 443?
@@ -223,7 +223,7 @@ Internet (Users)
 4. Container Apps responding on internal FQDN?
 
 ### Issue: Timeout
-**Symptom**: Requests timeout  
+**Symptom**: Requests timeout
 **Check**:
 1. All NSG rules in place?
 2. Private DNS resolution working?
