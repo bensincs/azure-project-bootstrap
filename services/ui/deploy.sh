@@ -8,13 +8,11 @@ cd ../../infra/core
 CONTAINER_REGISTRY=$(terraform output -raw container_registry_login_server)
 CONTAINER_APP_NAME="ca-core-ui-service-dev"
 RESOURCE_GROUP=$(terraform output -raw resource_group_name)
-WEBSITE_URL=$(terraform output -raw website_url)
 cd ../../services/ui
 
 echo "📦 Container Registry: $CONTAINER_REGISTRY"
 echo "📦 Container App: $CONTAINER_APP_NAME"
 echo "📦 Resource Group: $RESOURCE_GROUP"
-echo "🌐 Website URL: $WEBSITE_URL"
 
 # Build and push Docker image
 IMAGE_NAME="$CONTAINER_REGISTRY/ui-service"
@@ -80,6 +78,3 @@ az containerapp update \
 
 echo ""
 echo "✅ Deployment complete!"
-echo ""
-echo "🌐 Your site is live at:"
-echo "$WEBSITE_URL"
