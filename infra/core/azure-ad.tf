@@ -19,31 +19,13 @@ resource "azuread_application" "main" {
     }
   }
 
-  # Web application configuration
-  web {
-    homepage_url = "https://${azurerm_public_ip.app_gateway.ip_address}"
-
-    implicit_grant {
-      access_token_issuance_enabled = true
-      id_token_issuance_enabled     = true
-    }
-
-    redirect_uris = [
-      "https://${azurerm_public_ip.app_gateway.ip_address}/",
-      "https://${azurerm_public_ip.app_gateway.ip_address}/auth/callback",
-      "http://localhost:5173/",         # Vite dev server
-      "http://localhost:5173/auth/callback", # Vite callback
-    ]
-  }
-
-  # Single Page Application configuration
+  # Single Page Application configuration (Authorization Code Flow with PKCE)
   single_page_application {
     redirect_uris = [
       "https://${azurerm_public_ip.app_gateway.ip_address}/",
       "https://${azurerm_public_ip.app_gateway.ip_address}/auth/callback",
-      "http://localhost:5173/",         # Vite dev server
+      "http://localhost:5173/",              # Vite dev server
       "http://localhost:5173/auth/callback", # Vite callback
-
     ]
   }
 

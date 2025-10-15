@@ -41,7 +41,9 @@ export default function Landing() {
               Launchpad repo for new AI projects.
             </h1>
             <p className="text-lg text-slate-300">
-              Opinionated templates wired for Azure: UI, APIs, realtime messaging, plus product IaC alongside separate bootstrap Terraform to wire GitHub identities, secrets, and subscriptions.
+              Opinionated templates wired for Azure: UI, APIs, realtime
+              messaging, plus product IaC alongside separate bootstrap Terraform
+              to wire GitHub identities, secrets, and subscriptions.
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <Link to="/app" className="ui-button-plain">

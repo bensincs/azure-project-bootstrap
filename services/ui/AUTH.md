@@ -97,13 +97,13 @@ import { useAuth } from '../hooks/useAuth';
 
 function MyComponent() {
   const { user, isLoading, userManager } = useAuth();
-  
+
   if (isLoading) return <div>Loading...</div>;
-  
+
   if (!user) {
     return <button onClick={() => userManager.signinRedirect()}>Login</button>;
   }
-  
+
   return <div>Welcome, {user.profile.name}!</div>;
 }
 ```

@@ -1,6 +1,12 @@
-import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { User, UserManager } from 'oidc-client-ts';
-import type { UserManagerSettings } from 'oidc-client-ts';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { User, UserManager } from "oidc-client-ts";
+import type { UserManagerSettings } from "oidc-client-ts";
 
 interface AuthContextType {
   userManager: UserManager;
@@ -15,13 +21,16 @@ interface AuthProviderProps {
   children: React.ReactNode;
 }
 
-export const AuthProvider: React.FC<AuthProviderProps> = ({ config, children }) => {
+export const AuthProvider: React.FC<AuthProviderProps> = ({
+  config,
+  children,
+}) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const userManager = useMemo(() => {
     return new UserManager({
-      response_type: 'code',
+      response_type: "code",
       ...config,
     });
   }, [config]);
@@ -65,7 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ config, children }) 
 export const useAuth = (): AuthContextType => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
