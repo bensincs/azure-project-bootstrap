@@ -43,18 +43,6 @@ variable "apim_sku_name" {
   default     = "Developer_1"
 }
 
-variable "apim_custom_domain_enabled" {
-  description = "Enable custom domain for API Management"
-  type        = bool
-  default     = false
-}
-
-variable "apim_custom_domain" {
-  description = "Custom domain for API Management gateway"
-  type        = string
-  default     = ""
-}
-
 # VPN Gateway Configuration
 variable "enable_vpn_gateway" {
   description = "Enable VPN Gateway for secure remote access"
