@@ -42,6 +42,9 @@ resource "azurerm_api_management_api" "api_service" {
   protocols           = ["https"]
 
   subscription_required = false
+  
+  # Placeholder - will be overridden by policy
+  service_url = "https://example.com"
 
   # Start with empty API, import OpenAPI spec manually after deployment
   # import {
@@ -62,6 +65,7 @@ resource "azurerm_api_management_api" "api_service" {
 
 # Notification Service - imports OpenAPI spec from Node.js service
 # Note: OpenAPI import happens after initial creation
+# WebSocket protocol will be configured via policy, not at API level
 resource "azurerm_api_management_api" "notification_service" {
   name                = "notification-service"
   resource_group_name = azurerm_resource_group.core.name
@@ -69,9 +73,12 @@ resource "azurerm_api_management_api" "notification_service" {
   revision            = "1"
   display_name        = "Notification Service"
   path                = "notify"
-  protocols           = ["https", "ws", "wss"]
+  protocols           = ["https"]
 
   subscription_required = false
+  
+  # Placeholder - will be overridden by policy
+  service_url = "https://example.com"
 
   # Start with empty API, import OpenAPI spec manually after deployment
   # import {
@@ -91,6 +98,7 @@ resource "azurerm_api_management_api" "notification_service" {
 }
 
 # UI Service - static SPA, no OpenAPI
+# Empty path serves from root, operations defined separately
 resource "azurerm_api_management_api" "ui_service" {
   name                = "ui-service"
   resource_group_name = azurerm_resource_group.core.name
@@ -99,8 +107,11 @@ resource "azurerm_api_management_api" "ui_service" {
   display_name        = "UI Service"
   path                = ""
   protocols           = ["https"]
-
+  
   subscription_required = false
+  
+  # Dummy service URL (will be overridden by policy)
+  service_url = "https://example.com"
 
   depends_on = [
     azurerm_container_app.ui_service,
