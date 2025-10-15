@@ -2,9 +2,33 @@ import express from "express";
 import { WebSocketServer, WebSocket } from "ws";
 import cors from "cors";
 import http from "http";
+import swaggerJsdoc from "swagger-jsdoc";
+import swaggerUi from "swagger-ui-express";
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+
+// Swagger/OpenAPI definition
+const swaggerOptions = {
+  definition: {
+    openapi: "3.0.0",
+    info: {
+      title: "Notification Service API",
+      version: "1.0.0",
+      description:
+        "WebSocket notification service with REST API for broadcasting messages",
+    },
+    servers: [
+      {
+        url: "/",
+        description: "Notification Service",
+      },
+    ],
+  },
+  apis: ["./src/index.ts", "./dist/index.js"], // Path to the API docs
+};
+
+const swaggerSpec = swaggerJsdoc(swaggerOptions);
 
 // Middleware - Configure CORS to allow all origins
 app.use(
@@ -16,6 +40,13 @@ app.use(
   })
 );
 app.use(express.json());
+
+// Serve Swagger docs
+app.use("/swagger", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.get("/swagger.json", (req, res) => {
+  res.setHeader("Content-Type", "application/json");
+  res.send(swaggerSpec);
+});
 
 // Create HTTP server
 const server = http.createServer(app);
@@ -73,8 +104,37 @@ function broadcastNotification(notification: any) {
   });
 }
 
+/**
+ * @swagger
+ * /notify/broadcast:
+ *   post:
+ *     summary: Broadcast a notification to all connected WebSocket clients
+ *     description: Sends a notification message to all active WebSocket connections
+ *     tags:
+ *       - Notifications
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - message
+ *             properties:
+ *               message:
+ *                 type: string
+ *                 description: The notification message to broadcast
+ *               type:
+ *                 type: string
+ *                 description: Optional notification type
+ *     responses:
+ *       200:
+ *         description: Notification successfully broadcasted
+ *       400:
+ *         description: Invalid request - message is required
+ */
 // REST API endpoint to push notifications
-app.post("/api/broadcast", (req, res) => {
+app.post("/notify/broadcast", (req, res) => {
   const notification = req.body;
 
   if (!notification || !notification.message) {
@@ -91,8 +151,34 @@ app.post("/api/broadcast", (req, res) => {
   });
 });
 
+/**
+ * @swagger
+ * /notify/health:
+ *   get:
+ *     summary: Health check endpoint
+ *     description: Returns the health status of the notification service
+ *     tags:
+ *       - Health
+ *     responses:
+ *       200:
+ *         description: Service is healthy
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   example: ok
+ *                 connectedClients:
+ *                   type: number
+ *                   description: Number of active WebSocket connections
+ *                 uptime:
+ *                   type: number
+ *                   description: Service uptime in seconds
+ */
 // Health check endpoint
-app.get("/api/health", (req, res) => {
+app.get("/notify/health", (req, res) => {
   res.json({
     status: "ok",
     connectedClients: clients.size,

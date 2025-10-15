@@ -1,0 +1,63 @@
+<policies>
+    <inbound>
+        <base />
+
+        <!-- Skip JWT validation for health endpoints -->
+        <choose>
+            <when condition="@(context.Request.Url.Path.EndsWith("/health"))">
+                <!-- Health check - no JWT required -->
+            </when>
+            <otherwise>
+                <!-- Validate JWT for WebSocket and notification endpoints -->
+                <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized. Valid JWT token required.">
+                    <openid-config url="https://login.microsoftonline.com/${TENANT_ID}/v2.0/.well-known/openid-configuration" />
+                    <audiences>
+                        <audience>${CLIENT_ID}</audience>
+                    </audiences>
+                    <issuers>
+                        <issuer>https://login.microsoftonline.com/${TENANT_ID}/v2.0</issuer>
+                    </issuers>
+                    <required-claims>
+                        <claim name="aud" match="any">
+                            <value>${CLIENT_ID}</value>
+                        </claim>
+                    </required-claims>
+                </validate-jwt>
+
+                <!-- Extract user claims for WebSocket connection -->
+                <set-header name="X-User-Email" exists-action="override">
+                    <value>@{
+                        var jwt = context.Request.Headers.GetValueOrDefault("Authorization","").Replace("Bearer ", "").AsJwt();
+                        var email = jwt?.Claims.GetValueOrDefault("email", "");
+                        if (string.IsNullOrEmpty(email)) email = jwt?.Claims.GetValueOrDefault("upn", "");
+                        if (string.IsNullOrEmpty(email)) email = jwt?.Claims.GetValueOrDefault("preferred_username", "");
+                        return email;
+                    }</value>
+                </set-header>
+
+                <set-header name="X-User-OID" exists-action="override">
+                    <value>@(context.Request.Headers.GetValueOrDefault("Authorization","")
+                        .Replace("Bearer ", "")
+                        .AsJwt()?.Claims.GetValueOrDefault("oid", ""))</value>
+                </set-header>
+            </otherwise>
+        </choose>
+
+        <!-- Route to notification service backend -->
+        <set-backend-service base-url="${BACKEND_URL}" />
+
+        <!-- Forward original host header -->
+        <set-header name="X-Forwarded-Host" exists-action="override">
+            <value>@(context.Request.OriginalUrl.Host)</value>
+        </set-header>
+    </inbound>
+    <backend>
+        <base />
+    </backend>
+    <outbound>
+        <base />
+    </outbound>
+    <on-error>
+        <base />
+    </on-error>
+</policies>

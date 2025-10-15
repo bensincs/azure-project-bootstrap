@@ -87,9 +87,66 @@ sleep 5
 echo ""
 echo "✅ Deployment complete!"
 echo ""
-echo "🌐 API URL:"
-cd ../../infra/core
-terraform output notification_api_url
+
+# Get the URL
+FQDN=$(az containerapp show \
+  --name "$CONTAINER_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query "properties.configuration.ingress.fqdn" \
+  --output tsv)
+
+echo "🌐 Notification Service URL: https://$FQDN"
+echo "📊 Health Check: https://$FQDN/notify/health"
+echo "🔌 WebSocket: wss://$FQDN/ws"
+echo "📖 Swagger UI: https://$FQDN/swagger"
 echo ""
-echo "🔌 WebSocket URL:"
-terraform output notification_api_websocket_url
+
+# Import OpenAPI spec into APIM
+cd ../../infra/core
+echo "📥 Importing OpenAPI spec into APIM..."
+APIM_NAME=$(terraform output -raw apim_name)
+TENANT_ID=$(terraform output -raw tenant_id)
+CLIENT_ID=$(terraform output -raw client_id)
+cd ../../services/notification-service
+
+# Update policy with current values
+POLICY_FILE="./apim-policy.xml"
+POLICY_CONTENT=$(cat "$POLICY_FILE")
+POLICY_CONTENT="${POLICY_CONTENT//\$\{BACKEND_URL\}/https://$FQDN}"
+POLICY_CONTENT="${POLICY_CONTENT//\$\{TENANT_ID\}/$TENANT_ID}"
+POLICY_CONTENT="${POLICY_CONTENT//\$\{CLIENT_ID\}/$CLIENT_ID}"
+
+# Create temp policy file
+TEMP_POLICY=$(mktemp)
+echo "$POLICY_CONTENT" > "$TEMP_POLICY"
+
+# Import OpenAPI spec
+az apim api import \
+  --resource-group "$RESOURCE_GROUP" \
+  --service-name "$APIM_NAME" \
+  --path "notify" \
+  --api-id "notification-service" \
+  --specification-url "https://$FQDN/swagger.json" \
+  --specification-format OpenApiJson \
+  --display-name "Notification Service" \
+  --protocols https wss \
+  --subscription-required false \
+  --api-type http \
+  --no-wait
+
+echo "⏳ Waiting for OpenAPI import to complete..."
+sleep 5
+
+# Apply custom policy
+echo "📋 Applying APIM policy..."
+az apim api policy create \
+  --resource-group "$RESOURCE_GROUP" \
+  --service-name "$APIM_NAME" \
+  --api-id "notification-service" \
+  --xml-content "@$TEMP_POLICY"
+
+# Clean up temp file
+rm "$TEMP_POLICY"
+
+echo "✅ OpenAPI spec imported and policy applied!"
+echo ""

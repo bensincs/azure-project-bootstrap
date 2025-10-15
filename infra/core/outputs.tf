@@ -207,3 +207,44 @@ output "apim_name" {
   description = "Name of the API Management instance"
   value       = azurerm_api_management.core.name
 }
+
+# Convenient aliases for deploy scripts
+output "tenant_id" {
+  description = "Azure AD Tenant ID (alias for deploy scripts)"
+  value       = data.azuread_client_config.current.tenant_id
+}
+
+output "client_id" {
+  description = "Azure AD Client ID (alias for deploy scripts)"
+  value       = azuread_application.main.client_id
+}
+
+output "api_service_name" {
+  description = "Name of the API service Container App"
+  value       = azurerm_container_app.api_service.name
+}
+
+output "notification_service_name" {
+  description = "Name of the Notification service Container App"
+  value       = azurerm_container_app.notification_service.name
+}
+
+output "ui_service_name" {
+  description = "Name of the UI service Container App"
+  value       = azurerm_container_app.ui_service.name
+}
+
+output "api_service_fqdn" {
+  description = "FQDN of the API service"
+  value       = azurerm_container_app.api_service.ingress[0].fqdn
+}
+
+output "notification_service_fqdn" {
+  description = "FQDN of the Notification service"
+  value       = azurerm_container_app.notification_service.ingress[0].fqdn
+}
+
+output "ui_service_fqdn" {
+  description = "FQDN of the UI service"
+  value       = azurerm_container_app.ui_service.ingress[0].fqdn
+}

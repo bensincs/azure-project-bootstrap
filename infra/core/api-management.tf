@@ -25,116 +25,107 @@ resource "azurerm_api_management" "core" {
   tags = local.common_tags
 }
 
-# API Management API for your backend services
-resource "azurerm_api_management_api" "main" {
-  name                = "main-api"
+# ==========================================
+# API Management APIs - Import from OpenAPI
+# ==========================================
+
+# API Service - imports OpenAPI spec from .NET API
+# Note: OpenAPI import happens after initial creation
+# To update from OpenAPI spec, run: az apim api import --path api --specification-url <url>
+resource "azurerm_api_management_api" "api_service" {
+  name                = "api-service"
   resource_group_name = azurerm_resource_group.core.name
   api_management_name = azurerm_api_management.core.name
   revision            = "1"
-  display_name        = "Main API"
+  display_name        = "API Service"
+  path                = "api"
+  protocols           = ["https"]
+
+  subscription_required = false
+
+  # Start with empty API, import OpenAPI spec manually after deployment
+  # import {
+  #   content_format = "openapi+json-link"
+  #   content_value  = "https://${azurerm_container_app.api_service.ingress[0].fqdn}/swagger/v1/swagger.json"
+  # }
+
+  lifecycle {
+    ignore_changes = [
+      import # Allow manual OpenAPI updates without Terraform overwriting
+    ]
+  }
+
+  depends_on = [
+    azurerm_container_app.api_service,
+  ]
+}
+
+# Notification Service - imports OpenAPI spec from Node.js service
+# Note: OpenAPI import happens after initial creation
+resource "azurerm_api_management_api" "notification_service" {
+  name                = "notification-service"
+  resource_group_name = azurerm_resource_group.core.name
+  api_management_name = azurerm_api_management.core.name
+  revision            = "1"
+  display_name        = "Notification Service"
+  path                = "notify"
+  protocols           = ["https", "ws", "wss"]
+
+  subscription_required = false
+
+  # Start with empty API, import OpenAPI spec manually after deployment
+  # import {
+  #   content_format = "openapi+json-link"
+  #   content_value  = "https://${azurerm_container_app.notification_service.ingress[0].fqdn}/swagger.json"
+  # }
+
+  lifecycle {
+    ignore_changes = [
+      import # Allow manual OpenAPI updates without Terraform overwriting
+    ]
+  }
+
+  depends_on = [
+    azurerm_container_app.notification_service,
+  ]
+}
+
+# UI Service - static SPA, no OpenAPI
+resource "azurerm_api_management_api" "ui_service" {
+  name                = "ui-service"
+  resource_group_name = azurerm_resource_group.core.name
+  api_management_name = azurerm_api_management.core.name
+  revision            = "1"
+  display_name        = "UI Service"
   path                = ""
   protocols           = ["https"]
 
   subscription_required = false
-  service_url           = "https://httpbin.org"
 
   depends_on = [
-    azurerm_container_app.api_service,
     azurerm_container_app.ui_service,
-    azurerm_container_app.notification_service,
   ]
 }
 
-# Add wildcard operations to catch all requests
-resource "azurerm_api_management_api_operation" "wildcard_get" {
-  operation_id        = "wildcard-get"
-  api_name            = azurerm_api_management_api.main.name
+# Wildcard operation for UI SPA routing (no OpenAPI for static SPA)
+resource "azurerm_api_management_api_operation" "ui_wildcard" {
+  operation_id        = "ui-spa-route"
+  api_name            = azurerm_api_management_api.ui_service.name
   api_management_name = azurerm_api_management.core.name
   resource_group_name = azurerm_resource_group.core.name
-  display_name        = "GET Wildcard"
+  display_name        = "SPA Routing"
   method              = "GET"
   url_template        = "/*"
+  description         = "Handles all SPA routes for the UI"
 
   response {
     status_code = 200
   }
 }
 
-resource "azurerm_api_management_api_operation" "wildcard_post" {
-  operation_id        = "wildcard-post"
-  api_name            = azurerm_api_management_api.main.name
-  api_management_name = azurerm_api_management.core.name
-  resource_group_name = azurerm_resource_group.core.name
-  display_name        = "POST Wildcard"
-  method              = "POST"
-  url_template        = "/*"
-
-  response {
-    status_code = 200
-  }
-}
-
-resource "azurerm_api_management_api_operation" "wildcard_put" {
-  operation_id        = "wildcard-put"
-  api_name            = azurerm_api_management_api.main.name
-  api_management_name = azurerm_api_management.core.name
-  resource_group_name = azurerm_resource_group.core.name
-  display_name        = "PUT Wildcard"
-  method              = "PUT"
-  url_template        = "/*"
-
-  response {
-    status_code = 200
-  }
-}
-
-resource "azurerm_api_management_api_operation" "wildcard_delete" {
-  operation_id        = "wildcard-delete"
-  api_name            = azurerm_api_management_api.main.name
-  api_management_name = azurerm_api_management.core.name
-  resource_group_name = azurerm_resource_group.core.name
-  display_name        = "DELETE Wildcard"
-  method              = "DELETE"
-  url_template        = "/*"
-
-  response {
-    status_code = 200
-  }
-}
-
-resource "azurerm_api_management_api_operation" "wildcard_options" {
-  operation_id        = "wildcard-options"
-  api_name            = azurerm_api_management_api.main.name
-  api_management_name = azurerm_api_management.core.name
-  resource_group_name = azurerm_resource_group.core.name
-  display_name        = "OPTIONS Wildcard"
-  method              = "OPTIONS"
-  url_template        = "/*"
-
-  response {
-    status_code = 200
-  }
-}
-
-# API Management Policy - Routing to Container Apps
-resource "azurerm_api_management_api_policy" "main" {
-  api_name            = azurerm_api_management_api.main.name
-  api_management_name = azurerm_api_management.core.name
-  resource_group_name = azurerm_resource_group.core.name
-
-  xml_content = templatefile("${path.module}/apim-policy-full.xml", {
-    API_SERVICE_FQDN          = azurerm_container_app.api_service.ingress[0].fqdn
-    NOTIFICATION_SERVICE_FQDN = azurerm_container_app.notification_service.ingress[0].fqdn
-    UI_SERVICE_FQDN           = azurerm_container_app.ui_service.ingress[0].fqdn
-    TENANT_ID                 = data.azuread_client_config.current.tenant_id
-    CLIENT_ID                 = azuread_application.main.client_id
-  })
-
-  depends_on = [
-    azurerm_api_management_api.main,
-    azurerm_container_app.api_service,
-    azurerm_container_app.ui_service,
-    azurerm_container_app.notification_service,
-  ]
-}
-
+# ==========================================
+# API Policies
+# ==========================================
+# Note: Policies are managed by each service's deploy.sh script
+# This keeps policies synchronized with service deployments and avoids Terraform drift
+# See services/*/deploy.sh for policy application logic

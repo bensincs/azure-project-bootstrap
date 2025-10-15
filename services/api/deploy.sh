@@ -64,7 +64,55 @@ FQDN=$(az containerapp show \
 
 echo ""
 echo "🌐 API Service URL: https://$FQDN"
-echo "📊 Health Check: https://$FQDN/health"
+echo "📊 Health Check: https://$FQDN/api/health"
 echo "👋 Hello Endpoint: https://$FQDN/api/hello"
 echo "📖 Swagger UI: https://$FQDN/swagger"
+echo ""
+
+# Import OpenAPI spec into APIM
+echo "📥 Importing OpenAPI spec into APIM..."
+APIM_NAME=$(cd "$INFRA_DIR" && terraform output -raw apim_name)
+TENANT_ID=$(cd "$INFRA_DIR" && terraform output -raw tenant_id)
+CLIENT_ID=$(cd "$INFRA_DIR" && terraform output -raw client_id)
+
+# Update policy with current values
+POLICY_FILE="$SCRIPT_DIR/apim-policy.xml"
+POLICY_CONTENT=$(cat "$POLICY_FILE")
+POLICY_CONTENT="${POLICY_CONTENT//\$\{BACKEND_URL\}/https://$FQDN}"
+POLICY_CONTENT="${POLICY_CONTENT//\$\{TENANT_ID\}/$TENANT_ID}"
+POLICY_CONTENT="${POLICY_CONTENT//\$\{CLIENT_ID\}/$CLIENT_ID}"
+
+# Create temp policy file
+TEMP_POLICY=$(mktemp)
+echo "$POLICY_CONTENT" > "$TEMP_POLICY"
+
+# Import OpenAPI spec
+az apim api import \
+  --resource-group "$RG_NAME" \
+  --service-name "$APIM_NAME" \
+  --path "api" \
+  --api-id "api-service" \
+  --specification-url "https://$FQDN/swagger/v1/swagger.json" \
+  --specification-format OpenApiJson \
+  --display-name "API Service" \
+  --protocols https \
+  --subscription-required false \
+  --api-type http \
+  --no-wait
+
+echo "⏳ Waiting for OpenAPI import to complete..."
+sleep 5
+
+# Apply custom policy
+echo "📋 Applying APIM policy..."
+az apim api policy create \
+  --resource-group "$RG_NAME" \
+  --service-name "$APIM_NAME" \
+  --api-id "api-service" \
+  --xml-content "@$TEMP_POLICY"
+
+# Clean up temp file
+rm "$TEMP_POLICY"
+
+echo "✅ OpenAPI spec imported and policy applied!"
 echo ""

@@ -22,9 +22,12 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
+// Enable Swagger in all environments for APIM to import OpenAPI spec
+app.UseSwagger();
+
+// Only show Swagger UI in development
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
     app.UseSwaggerUI();
 }
 

@@ -78,3 +78,42 @@ az containerapp update \
 
 echo ""
 echo "✅ Deployment complete!"
+
+# Get the URL
+FQDN=$(az containerapp show \
+  --name "$CONTAINER_APP_NAME" \
+  --resource-group "$RESOURCE_GROUP" \
+  --query "properties.configuration.ingress.fqdn" \
+  --output tsv)
+
+echo ""
+echo "🌐 UI Service URL: https://$FQDN"
+echo ""
+
+# Apply UI policy to APIM (no OpenAPI, just policy)
+cd ../../infra/core
+echo "📋 Applying APIM policy for UI service..."
+APIM_NAME=$(terraform output -raw apim_name)
+cd ../../services/ui
+
+# Update policy with current values
+POLICY_FILE="./apim-policy.xml"
+POLICY_CONTENT=$(cat "$POLICY_FILE")
+POLICY_CONTENT="${POLICY_CONTENT//\$\{BACKEND_URL\}/https://$FQDN}"
+
+# Create temp policy file
+TEMP_POLICY=$(mktemp)
+echo "$POLICY_CONTENT" > "$TEMP_POLICY"
+
+# Apply custom policy
+az apim api policy create \
+  --resource-group "$RESOURCE_GROUP" \
+  --service-name "$APIM_NAME" \
+  --api-id "ui-service" \
+  --xml-content "@$TEMP_POLICY" || echo "⚠️  Policy update failed (API may not exist yet)"
+
+# Clean up temp file
+rm "$TEMP_POLICY"
+
+echo "✅ Policy applied!"
+echo ""
