@@ -10,7 +10,7 @@
             </when>
             <when condition="@(context.Request.Url.Path.StartsWith("/api") || context.Request.Url.Path.StartsWith("/notify") || context.Request.Url.Path.StartsWith("/ws"))">
                 <!-- Validate JWT tokens from Azure AD for API and notification endpoints -->
-                <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized. Valid JWT token required.">
+                <!-- <validate-jwt header-name="Authorization" failed-validation-httpcode="401" failed-validation-error-message="Unauthorized. Valid JWT token required.">
                     <openid-config url="https://login.microsoftonline.com/${TENANT_ID}/v2.0/.well-known/openid-configuration" />
                     <audiences>
                         <audience>${CLIENT_ID}</audience>
@@ -23,7 +23,7 @@
                             <value>${CLIENT_ID}</value>
                         </claim>
                     </required-claims>
-                </validate-jwt>
+                </validate-jwt> -->
 
                 <!-- Add user claims as headers for authenticated requests -->
                 <set-header name="X-User-Email" exists-action="override">
