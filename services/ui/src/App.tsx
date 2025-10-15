@@ -3,6 +3,7 @@ import Landing from "./pages/Landing";
 import AppPage from "./pages/AppPage";
 import { useNotifications } from "./hooks/useNotifications";
 import { NotificationContainer } from "./components/NotificationToast";
+import { AuthCallback } from "./pages/AuthCallback";
 
 // WebSocket URL - automatically set by deploy.sh in production
 // Falls back to localhost for local development
@@ -22,6 +23,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/app" element={<AppPage />} />
+        <Route path="/auth/callback" element={<AuthCallback />} />
       </Routes>
     </BrowserRouter>
   );

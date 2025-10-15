@@ -30,7 +30,9 @@ resource "azuread_application" "main" {
 
     redirect_uris = [
       "https://${azurerm_public_ip.app_gateway.ip_address}/",
-      "http://localhost:5173/", # Vite dev server
+      "https://${azurerm_public_ip.app_gateway.ip_address}/auth/callback",
+      "http://localhost:5173/",         # Vite dev server
+      "http://localhost:5173/auth/callback", # Vite callback
     ]
   }
 
@@ -38,7 +40,9 @@ resource "azuread_application" "main" {
   single_page_application {
     redirect_uris = [
       "https://${azurerm_public_ip.app_gateway.ip_address}/",
-      "http://localhost:5173/", # Vite dev server
+      "https://${azurerm_public_ip.app_gateway.ip_address}/auth/callback",
+      "http://localhost:5173/",         # Vite dev server
+      "http://localhost:5173/auth/callback", # Vite callback
 
     ]
   }

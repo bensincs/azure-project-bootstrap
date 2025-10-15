@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import AnimatedBackground from "../components/AnimatedBackground";
+import { LoginButton } from "../components/LoginButton";
 
 export default function Landing() {
   return (
@@ -20,15 +21,18 @@ export default function Landing() {
               </p>
             </div>
           </div>
-          <a
-            href="https://github.com/bensincs/azure-project-bootstrap"
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white"
-          >
-            <span>View Repository</span>
-            <span aria-hidden>↗</span>
-          </a>
+          <div className="flex items-center gap-3">
+            <LoginButton />
+            <a
+              href="https://github.com/bensincs/azure-project-bootstrap"
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-medium text-slate-200 transition hover:border-cyan-400/60 hover:text-white"
+            >
+              <span>View Repository</span>
+              <span aria-hidden>↗</span>
+            </a>
+          </div>
         </header>
 
         <main className="relative z-10 mx-auto flex w-full max-w-5xl flex-1 flex-col gap-12 px-6 pb-20 pt-24">
