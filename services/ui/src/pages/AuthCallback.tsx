@@ -1,17 +1,20 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../hooks/useAuth";
 
 export const AuthCallback = () => {
   const { userManager } = useAuth();
   const navigate = useNavigate();
+  const hasProcessed = useRef(false);
 
   useEffect(() => {
-    console.log("asdasd");
+    // Prevent double-processing in React Strict Mode
+    if (hasProcessed.current) return;
+    hasProcessed.current = true;
+
     userManager
       .signinRedirectCallback()
       .then(() => {
-        console.log("asdasd");
         navigate("/");
       })
       .catch((error) => {

@@ -122,10 +122,12 @@ resource "azurerm_api_management_api_policy" "main" {
   api_management_name = azurerm_api_management.core.name
   resource_group_name = azurerm_resource_group.core.name
 
-  xml_content = templatefile("${path.module}/apim-policy.xml", {
+  xml_content = templatefile("${path.module}/apim-policy-full.xml", {
     API_SERVICE_FQDN          = azurerm_container_app.api_service.ingress[0].fqdn
     NOTIFICATION_SERVICE_FQDN = azurerm_container_app.notification_service.ingress[0].fqdn
     UI_SERVICE_FQDN           = azurerm_container_app.ui_service.ingress[0].fqdn
+    TENANT_ID                 = var.aad_tenant_id
+    CLIENT_ID                 = azuread_application.main.client_id
   })
 
   depends_on = [

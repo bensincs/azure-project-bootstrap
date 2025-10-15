@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import AnimatedBackground from "../components/AnimatedBackground";
-import { LoginButton } from "../components/LoginButton";
 
 export default function Landing() {
   return (
@@ -22,7 +21,6 @@ export default function Landing() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <LoginButton />
             <a
               href="https://github.com/bensincs/azure-project-bootstrap"
               target="_blank"

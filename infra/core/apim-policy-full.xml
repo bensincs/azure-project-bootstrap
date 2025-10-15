@@ -82,26 +82,6 @@
         <set-header name="X-Forwarded-Host" exists-action="override">
             <value>@(context.Request.OriginalUrl.Host)</value>
         </set-header>
-
-        <!-- CORS policy -->
-        <cors allow-credentials="true">
-            <allowed-origins>
-                <origin>*</origin>
-            </allowed-origins>
-            <allowed-methods>
-                <method>GET</method>
-                <method>POST</method>
-                <method>PUT</method>
-                <method>DELETE</method>
-                <method>OPTIONS</method>
-            </allowed-methods>
-            <allowed-headers>
-                <header>*</header>
-            </allowed-headers>
-            <expose-headers>
-                <header>*</header>
-            </expose-headers>
-        </cors>
     </inbound>
     <backend>
         <base />
