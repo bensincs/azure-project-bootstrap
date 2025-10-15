@@ -1,121 +1,181 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import AnimatedBackground from "../components/AnimatedBackground";
 import { useAuth } from "../hooks/useAuth";
+import { useEvents, type ChatEvent, type UserEvent } from "../hooks/useEvents";
 import { LoginButton } from "../components/LoginButton";
+
+interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  type: "info" | "success" | "warning" | "error";
+  timestamp: string;
+}
+
+interface ActiveUser {
+  id: string;
+  name: string;
+  email: string;
+}
+
+interface ChatMessage {
+  type: string;
+  from: string;
+  name: string;
+  email: string;
+  content: string;
+  timestamp?: number;
+}
 
 export default function AppPage() {
   const { user } = useAuth();
-  const [message, setMessage] = useState("");
-  const [title, setTitle] = useState("");
-  const [type, setType] = useState<"info" | "success" | "warning" | "error">(
-    "info"
-  );
-  const [sending, setSending] = useState(false);
-  const [status, setStatus] = useState<{
-    type: string;
-    message: string;
-  } | null>(null);
+  const { connectionStatus, subscribe } = useEvents();
+  const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
+  const [selectedUser, setSelectedUser] = useState<ActiveUser | null>(null);
+  const [messageInput, setMessageInput] = useState("");
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
 
-  // API testing state
-  const [apiTestResult, setApiTestResult] = useState<any>(null);
-  const [apiTestLoading, setApiTestLoading] = useState(false);
-  const [testName, setTestName] = useState("World");
-
-  // Get API URL from environment or default to localhost
-  const notifyUrl =
-    import.meta.env.VITE_NOTIFY_URL || "http://localhost:8080/notify";
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
-  const handleSendNotification = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!message.trim()) {
-      setStatus({ type: "error", message: "Message is required" });
-      return;
-    }
-
-    setSending(true);
-    setStatus(null);
+  // Fetch active users
+  const fetchActiveUsers = async () => {
+    if (!user) return;
 
     try {
-      const response = await fetch(`${notifyUrl}/broadcast`, {
-        method: "POST",
+      const response = await fetch(`${apiUrl}/users/active`, {
         headers: {
-          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.access_token}`,
         },
-        body: JSON.stringify({
-          message: message.trim(),
-          title: title.trim() || undefined,
-          type,
-        }),
       });
 
-      if (!response.ok) {
-        throw new Error(`Failed to send notification: ${response.statusText}`);
+      if (response.ok) {
+        const data = await response.json();
+        setActiveUsers(data.users || []);
       }
-
-      const result = await response.json();
-      setStatus({
-        type: "success",
-        message: `Notification sent to ${result.clients} client(s)`,
-      });
-
-      // Clear form
-      setMessage("");
-      setTitle("");
-      setType("info");
     } catch (error) {
-      console.error("Error sending notification:", error);
-      setStatus({
-        type: "error",
-        message:
-          error instanceof Error
-            ? error.message
-            : "Failed to send notification",
-      });
-    } finally {
-      setSending(false);
+      console.error("Failed to fetch active users:", error);
     }
   };
 
-  const testApiEndpoint = async (endpoint: string, description: string) => {
-    setApiTestLoading(true);
-    setApiTestResult(null);
+  // Event handlers
+  const handleChatMessage = (event: ChatEvent) => {
+    setMessages((prev) => [
+      ...prev,
+      {
+        type: "chat",
+        from: event.payload.from,
+        name: event.payload.name,
+        email: event.payload.email,
+        content: event.payload.content,
+        timestamp: Date.now(),
+      },
+    ]);
+  };
+
+  const handleUserJoined = (event: UserEvent) => {
+    console.log("User joined:", event);
+    // Refresh active users list
+    fetchActiveUsers();
+  };
+
+  const handleUserLeft = (event: UserEvent) => {
+    console.log("User left:", event);
+    // Refresh active users list
+    fetchActiveUsers();
+  };
+
+  // Subscribe to events
+  useEffect(() => {
+    const unsubChat = subscribe("chat", (event) => {
+      const chatEvent = event as ChatEvent;
+      setMessages((prev) => [
+        ...prev,
+        {
+          type: "chat",
+          from: chatEvent.payload.from,
+          name: chatEvent.payload.name,
+          email: chatEvent.payload.email,
+          content: chatEvent.payload.content,
+          timestamp: Date.now(),
+        },
+      ]);
+    });
+
+    const unsubUserJoined = subscribe("user_joined", (event) => {
+      console.log("User joined:", event);
+      fetchActiveUsers();
+    });
+
+    const unsubUserLeft = subscribe("user_left", (event) => {
+      console.log("User left:", event);
+      fetchActiveUsers();
+    });
+
+    return () => {
+      unsubChat();
+      unsubUserJoined();
+      unsubUserLeft();
+    };
+  }, [subscribe]);
+
+  // Fetch active users when connected
+  useEffect(() => {
+    console.log(connectionStatus);
+    if (connectionStatus === "connected") {
+      fetchActiveUsers();
+    }
+  }, [connectionStatus]);
+
+  // Refresh active users periodically
+  useEffect(() => {
+    if (!user || connectionStatus !== "connected") return;
+
+    const interval = setInterval(fetchActiveUsers, 5000);
+    return () => clearInterval(interval);
+  }, [user, connectionStatus]);
+
+  // Send message via REST API
+  const handleSendMessage = async () => {
+    if (!user || !selectedUser || !messageInput.trim()) return;
+
+    setSendingMessage(true);
 
     try {
-      // Get the access token if user is logged in
-      const headers: HeadersInit = {
-        "Content-Type": "application/json",
-      };
+      const response = await fetch(`${apiUrl}/messages/send`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${user.access_token}`,
+        },
+        body: JSON.stringify({
+          to: selectedUser.id,
+          content: messageInput.trim(),
+        }),
+      });
 
-      if (user) {
-        headers["Authorization"] = `Bearer ${user.access_token}`;
+      if (response.ok) {
+        // Add to local messages as "sent"
+        setMessages((prev) => [
+          ...prev,
+          {
+            type: "chat",
+            from: user.profile.sub || "",
+            name: user.profile.name || "",
+            email: user.profile.email || "",
+            content: messageInput.trim(),
+            timestamp: Date.now(),
+          },
+        ]);
+        setMessageInput("");
+      } else {
+        console.error("Failed to send message");
       }
-
-      const response = await fetch(`${apiUrl}${endpoint}`, {
-        headers,
-      });
-      const data = await response.json();
-
-      setApiTestResult({
-        endpoint,
-        description,
-        status: response.status,
-        statusText: response.ok ? "Success" : "Error",
-        data,
-        authenticated: !!user,
-      });
     } catch (error) {
-      setApiTestResult({
-        endpoint,
-        description,
-        status: 0,
-        statusText: "Failed",
-        error: error instanceof Error ? error.message : "Unknown error",
-        authenticated: !!user,
-      });
+      console.error("Error sending message:", error);
     } finally {
-      setApiTestLoading(false);
+      setSendingMessage(false);
     }
   };
 
@@ -123,40 +183,56 @@ export default function AppPage() {
     <div className="relative min-h-screen overflow-hidden">
       <AnimatedBackground />
       <div className="relative z-10 px-6 pb-20 pt-10">
-        <header className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+        <header className="mx-auto flex w-full max-w-6xl flex-col gap-4">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-baseline sm:justify-between">
             <div>
               <p className="text-xs uppercase tracking-[0.35em] text-slate-500">
-                Crew Dune Control
+                Realtime Chat
               </p>
               <h1 className="text-3xl font-semibold text-white">
-                Control Room
+                Direct Messages
               </h1>
             </div>
             <p className="max-w-sm text-sm text-slate-400">
-              Send realtime notifications and verify the API connection that
-              powers them.
+              Send messages to connected users in real-time via WebSocket
             </p>
           </div>
 
-          {/* Login Section */}
+          {/* Login & Connection Status */}
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4 backdrop-blur">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
-                  Authentication
-                </p>
-                {user ? (
-                  <p className="mt-1 text-sm text-white">
-                    Logged in as{" "}
-                    <span className="font-semibold">
-                      {user.profile.name || user.profile.email}
+              <div className="flex items-center gap-3">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
+                    {user ? "Connected as" : "Authentication"}
+                  </p>
+                  {user ? (
+                    <p className="mt-1 text-sm text-white">
+                      <span className="font-semibold">
+                        {user.profile.name || user.profile.email}
+                      </span>
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-sm text-slate-400">
+                      Sign in to start chatting
+                    </p>
+                  )}
+                </div>
+                {user && (
+                  <div className="flex items-center gap-2">
+                    <div
+                      className={`h-2 w-2 rounded-full ${
+                        connectionStatus === "connected"
+                          ? "bg-emerald-400"
+                          : connectionStatus === "connecting"
+                          ? "bg-yellow-400 animate-pulse"
+                          : "bg-slate-500"
+                      }`}
+                    />
+                    <span className="text-xs text-slate-400">
+                      {connectionStatus}
                     </span>
-                  </p>
-                ) : (
-                  <p className="mt-1 text-sm text-slate-400">
-                    Sign in to test authenticated endpoints
-                  </p>
+                  </div>
                 )}
               </div>
               <LoginButton />
@@ -164,248 +240,147 @@ export default function AppPage() {
           </div>
         </header>
 
-        <main className="mx-auto mt-12 flex w-full max-w-4xl flex-col gap-10">
-          <section className="rounded-3xl border border-white/10 bg-black/40 p-6 shadow-neon backdrop-blur">
-            <h2 className="text-xl font-semibold text-white">
-              Send a notification
-            </h2>
-            <p className="mt-2 text-sm text-slate-400">
-              Compose a message and broadcast it to every connected client.
-            </p>
-
-            <form onSubmit={handleSendNotification} className="mt-6 space-y-6">
-              <div className="space-y-2">
-                <label
-                  htmlFor="title"
-                  className="text-xs uppercase tracking-[0.3em] text-slate-500"
-                >
-                  Title (optional)
-                </label>
-                <input
-                  type="text"
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="e.g. Deployment complete"
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/30"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <label
-                  htmlFor="message"
-                  className="text-xs uppercase tracking-[0.3em] text-slate-500"
-                >
-                  Message *
-                </label>
-                <textarea
-                  id="message"
-                  value={message}
-                  onChange={(e) => setMessage(e.target.value)}
-                  placeholder="Enter the payload you want to broadcast"
-                  rows={4}
-                  required
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/30"
-                />
-              </div>
-
-              <div className="space-y-2 sm:flex sm:items-center sm:gap-3 sm:space-y-0">
-                <label
-                  htmlFor="type"
-                  className="text-xs uppercase tracking-[0.3em] text-slate-500 sm:w-32"
-                >
-                  Type
-                </label>
-                <select
-                  id="type"
-                  value={type}
-                  onChange={(e) => setType(e.target.value as any)}
-                  className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/30 sm:flex-1"
-                >
-                  <option value="info">Info</option>
-                  <option value="success">Success</option>
-                  <option value="warning">Warning</option>
-                  <option value="error">Error</option>
-                </select>
-              </div>
-
-              {status && (
-                <div
-                  className={`rounded-2xl border px-4 py-3 text-sm ${
-                    status.type === "success"
-                      ? "border-emerald-400/40 bg-emerald-500/10 text-emerald-200"
-                      : "border-rose-500/40 bg-rose-500/10 text-rose-200"
-                  }`}
-                >
-                  {status.message}
-                </div>
-              )}
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-                <button
-                  type="submit"
-                  disabled={sending}
-                  className="ui-button-plain w-full justify-center sm:w-auto disabled:cursor-not-allowed disabled:opacity-60"
-                >
-                  {sending ? "Sending…" : "Send notification"}
-                </button>
-                <p className="text-xs text-slate-500">
-                  Endpoint:{" "}
-                  <code className="font-mono text-cyan-200">
-                    POST /api/notifications/broadcast
-                  </code>
-                </p>
-              </div>
-            </form>
-          </section>
-
-          {/* API Testing Section */}
-          <section className="rounded-3xl border border-white/10 bg-black/40 p-6 shadow-neon backdrop-blur">
-            <h2 className="text-xl font-semibold text-white">
-              API Endpoint Testing
-            </h2>
-            <p className="mt-2 text-sm text-slate-400">
-              Test various API endpoints to verify connectivity and
-              authentication.
-            </p>
-
-            <div className="mt-6 grid gap-3 sm:grid-cols-2">
-              <button
-                onClick={() => testApiEndpoint("/health", "Health Check")}
-                disabled={apiTestLoading}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-white transition hover:border-cyan-400/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <div className="font-semibold">Health Check</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  GET /api/health
-                </div>
-              </button>
-
-              <button
-                onClick={() => testApiEndpoint("/hello", "Hello Endpoint")}
-                disabled={apiTestLoading}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-white transition hover:border-cyan-400/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <div className="font-semibold">Hello World</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  GET /api/hello
-                </div>
-              </button>
-
-              <button
-                onClick={() => testApiEndpoint("/config", "Configuration")}
-                disabled={apiTestLoading}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-white transition hover:border-cyan-400/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <div className="font-semibold">Configuration</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  GET /api/config
-                </div>
-              </button>
-
-              <button
-                onClick={() =>
-                  testApiEndpoint(
-                    `/hello/${encodeURIComponent(testName)}`,
-                    `Hello ${testName}`
-                  )
-                }
-                disabled={apiTestLoading}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-white transition hover:border-cyan-400/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <div className="font-semibold">Hello with Name</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  GET /api/hello/:name
-                </div>
-              </button>
-
-              <button
-                onClick={() => testApiEndpoint("/user/me", "User Info")}
-                disabled={apiTestLoading || !user}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-white transition hover:border-cyan-400/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <div className="font-semibold">User Info {!user && "🔒"}</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  GET /api/user/me
-                </div>
-              </button>
-
-              <button
-                onClick={() => testApiEndpoint("/admin/test", "Admin Test")}
-                disabled={apiTestLoading || !user}
-                className="rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-white transition hover:border-cyan-400/50 hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <div className="font-semibold">Admin Test {!user && "🔒"}</div>
-                <div className="mt-1 text-xs text-slate-400">
-                  GET /api/admin/test
-                </div>
-              </button>
-            </div>
-
-            {/* Name input for hello/:name endpoint */}
-            <div className="mt-4 space-y-2">
-              <label
-                htmlFor="test-name"
-                className="text-xs uppercase tracking-[0.3em] text-slate-500"
-              >
-                Name for Hello Endpoint
-              </label>
-              <input
-                id="test-name"
-                type="text"
-                value={testName}
-                onChange={(e) => setTestName(e.target.value)}
-                placeholder="Enter a name"
-                className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/30"
-              />
-              <p className="text-xs text-slate-400">
-                This name will be used for the "Hello with Name" endpoint test
+        {!user ? (
+          <main className="mx-auto mt-12 w-full max-w-6xl">
+            <div className="rounded-3xl border border-white/10 bg-black/40 p-12 text-center shadow-neon backdrop-blur">
+              <p className="text-lg text-slate-300">
+                🔒 Please sign in to start using the chat
               </p>
             </div>
-
-            {apiTestLoading && (
-              <div className="mt-6 rounded-2xl border border-cyan-400/40 bg-cyan-500/10 px-4 py-3 text-sm text-cyan-200">
-                Testing endpoint...
+          </main>
+        ) : (
+          <main className="mx-auto mt-12 grid w-full max-w-6xl grid-cols-1 gap-6 lg:grid-cols-3">
+            {/* Active Users List */}
+            <section className="rounded-3xl border border-white/10 bg-black/40 p-6 shadow-neon backdrop-blur lg:col-span-1">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-white">
+                  Active Users
+                </h2>
+                <span className="rounded-full bg-cyan-500/20 px-2 py-1 text-xs font-semibold text-cyan-300">
+                  {activeUsers.length}
+                </span>
               </div>
-            )}
+              <p className="mt-1 text-xs text-slate-400">
+                Currently connected via WebSocket
+              </p>
 
-            {apiTestResult && !apiTestLoading && (
-              <div className="mt-6 space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-white">
-                    {apiTestResult.description}
-                    {apiTestResult.authenticated && (
-                      <span className="ml-2 text-xs font-normal text-cyan-300">
-                        🔑 Authenticated
-                      </span>
-                    )}
-                  </h3>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold ${
-                      apiTestResult.status >= 200 && apiTestResult.status < 300
-                        ? "bg-emerald-500/20 text-emerald-300"
-                        : apiTestResult.status >= 400
-                        ? "bg-rose-500/20 text-rose-300"
-                        : "bg-slate-500/20 text-slate-300"
-                    }`}
-                  >
-                    {apiTestResult.status > 0 ? apiTestResult.status : "Failed"}
-                  </span>
-                </div>
-
-                <div className="rounded-2xl border border-white/10 bg-black/60 p-4">
-                  <pre className="overflow-x-auto text-xs text-slate-300">
-                    {JSON.stringify(
-                      apiTestResult.data || apiTestResult.error,
-                      null,
-                      2
-                    )}
-                  </pre>
-                </div>
+              <div className="mt-6 space-y-2">
+                {activeUsers.length === 0 ? (
+                  <p className="text-sm text-slate-500">
+                    No other users connected
+                  </p>
+                ) : (
+                  activeUsers.map((u) => (
+                    <button
+                      key={u.id}
+                      onClick={() => setSelectedUser(u)}
+                      className={`w-full rounded-2xl border p-3 text-left transition ${
+                        selectedUser?.id === u.id
+                          ? "border-cyan-400/70 bg-cyan-500/10"
+                          : "border-white/10 bg-white/5 hover:border-cyan-400/30 hover:bg-white/10"
+                      }`}
+                    >
+                      <div className="font-medium text-white">{u.name}</div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        {u.email}
+                      </div>
+                    </button>
+                  ))
+                )}
               </div>
-            )}
-          </section>
-        </main>
+            </section>
+
+            {/* Chat Area */}
+            <section className="rounded-3xl border border-white/10 bg-black/40 p-6 shadow-neon backdrop-blur lg:col-span-2">
+              {!selectedUser ? (
+                <div className="flex h-full items-center justify-center">
+                  <p className="text-slate-400">
+                    👈 Select a user to start chatting
+                  </p>
+                </div>
+              ) : (
+                <div className="flex h-full flex-col">
+                  <div className="border-b border-white/10 pb-4">
+                    <h2 className="text-lg font-semibold text-white">
+                      {selectedUser.name}
+                    </h2>
+                    <p className="text-xs text-slate-400">
+                      {selectedUser.email}
+                    </p>
+                  </div>
+
+                  {/* Messages */}
+                  <div className="flex-1 space-y-3 overflow-y-auto py-4">
+                    {messages
+                      .filter(
+                        (msg) =>
+                          msg.from === selectedUser.id ||
+                          msg.from === user.profile.sub
+                      )
+                      .map((msg, idx) => {
+                        const isFromMe = msg.from === user.profile.sub;
+                        return (
+                          <div
+                            key={idx}
+                            className={`flex ${
+                              isFromMe ? "justify-end" : "justify-start"
+                            }`}
+                          >
+                            <div
+                              className={`max-w-[70%] rounded-2xl px-4 py-2 ${
+                                isFromMe
+                                  ? "bg-cyan-500/20 text-cyan-100"
+                                  : "bg-white/10 text-white"
+                              }`}
+                            >
+                              <p className="text-sm">{msg.content}</p>
+                              <p className="mt-1 text-xs opacity-60">
+                                {msg.timestamp
+                                  ? new Date(msg.timestamp).toLocaleTimeString()
+                                  : ""}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    {messages.filter(
+                      (msg) =>
+                        msg.from === selectedUser.id ||
+                        msg.from === user.profile.sub
+                    ).length === 0 && (
+                      <p className="text-center text-sm text-slate-500">
+                        No messages yet. Start the conversation!
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Message Input */}
+                  <div className="border-t border-white/10 pt-4">
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={messageInput}
+                        onChange={(e) => setMessageInput(e.target.value)}
+                        onKeyPress={(e) =>
+                          e.key === "Enter" && handleSendMessage()
+                        }
+                        placeholder="Type a message..."
+                        className="flex-1 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-slate-500 outline-none transition focus:border-cyan-400/70 focus:ring-2 focus:ring-cyan-400/30"
+                      />
+                      <button
+                        onClick={handleSendMessage}
+                        disabled={sendingMessage || !messageInput.trim()}
+                        className="rounded-2xl bg-cyan-500/20 px-6 py-3 text-sm font-semibold text-cyan-300 transition hover:bg-cyan-500/30 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {sendingMessage ? "Sending..." : "Send"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+          </main>
+        )}
       </div>
     </div>
   );

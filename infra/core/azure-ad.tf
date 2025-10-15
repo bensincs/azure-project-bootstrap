@@ -80,10 +80,18 @@ resource "azuread_application" "main" {
     }
   }
 
+  # Note: identifier_uris will be set separately to avoid circular dependency
+
   tags = [
     var.environment,
     "terraform-managed"
   ]
+}
+
+# Update the application to set identifier_uris (must be done after app is created)
+resource "azuread_application_identifier_uri" "main" {
+  application_id = azuread_application.main.id
+  identifier_uri = "api://${azuread_application.main.client_id}"
 }
 
 # Service Principal for the App Registration

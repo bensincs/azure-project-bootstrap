@@ -19,7 +19,10 @@ export const oidcConfig: UserManagerSettings = {
   redirect_uri: getRedirectUri(),
   post_logout_redirect_uri: getRedirectUri(),
   response_type: "code",
-  scope: "openid profile email",
+  // Request token for your API using the exposed scope
+  // This will give you an access token with audience = your clientId
+  scope: `api://${clientId}/api.access openid profile email`,
   automaticSilentRenew: true,
-  loadUserInfo: true,
+  // Don't load userinfo from Graph - we get user info from token claims
+  loadUserInfo: false,
 };

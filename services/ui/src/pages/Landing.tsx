@@ -45,7 +45,7 @@ export default function Landing() {
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <Link to="/app" className="ui-button-plain">
-                Open control room demo
+                Open Chat
               </Link>
               <p className="text-sm text-slate-400">
                 Explore the deployed sample UI backed by the same services
@@ -58,37 +58,37 @@ export default function Landing() {
             {[
               {
                 icon: "🖥️",
-                title: "Example UI",
+                title: "React UI",
                 description:
-                  "Vite + React control room deployed to Azure Storage static hosting, ready for branding swaps.",
+                  "Vite + React chat interface deployed to Azure Storage static hosting, ready for branding and customization.",
               },
               {
-                icon: "⚙️",
-                title: "HelloWorld API",
+                icon: "⚡",
+                title: "Go API",
                 description:
-                  ".NET API hosted in Azure Container Apps to validate backend connectivity and latency.",
+                  "High-performance Go API hosted in Azure Container Apps with JWT authentication and WebSocket support.",
               },
               {
-                icon: "🔔",
-                title: "Realtime notifications",
+                icon: "�",
+                title: "Realtime Events",
                 description:
-                  "Node-based notification service running in Container Apps, streaming updates via WebSockets.",
+                  "Extensible WebSocket-based event system for chat, user presence, and custom event broadcasting.",
               },
               {
                 icon: "🌐",
-                title: "Azure Front Door",
+                title: "Application Gateway Ingress",
                 description:
-                  "Global entry point routing UI and API traffic or ready to front your own domains.",
+                  "Azure Application Gateway with WAF for secure routing, SSL termination, and traffic management.",
               },
               {
                 icon: "🏗️",
                 title: "Product IaC",
                 description:
-                  "Terraform that stands up the core stack—Storage, Container Apps, Front Door, observability hooks—so the launchpad runs end to end.",
+                  "Terraform that stands up the core stack—Storage, Container Apps, App Gateway, observability hooks—so the launchpad runs end to end.",
               },
               {
                 icon: "🪄",
-                title: "Bootstrap scripts",
+                title: "Bootstrap Scripts",
                 description:
                   "Separate Terraform helpers that bootstrap your repo with Azure federated credentials, GitHub secrets, and subscription wiring for new teams.",
               },
