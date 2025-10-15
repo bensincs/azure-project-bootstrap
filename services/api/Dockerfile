@@ -1,25 +1,32 @@
-FROM mcr.microsoft.com/dotnet/sdk:9.0 AS build
-WORKDIR /src
+# Build stage
+FROM golang:1.23-alpine AS builder
 
-# Copy csproj and restore dependencies
-COPY api.csproj .
-RUN dotnet restore
-
-# Copy everything else and build
-COPY . .
-RUN dotnet publish -c Release -o /app/publish
-
-# Build runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:9.0 AS runtime
 WORKDIR /app
 
-# Copy published app
-COPY --from=build /app/publish .
+# Copy go mod files
+COPY go.mod ./
 
-# Set environment variables
-ENV ASPNETCORE_URLS=http://+:8080
-ENV PORT=8080
+# Download dependencies
+RUN go mod download
 
+# Copy source code
+COPY . .
+
+# Build the application
+RUN CGO_ENABLED=0 GOOS=linux go build -o api-service ./cmd/api
+
+# Runtime stage
+FROM alpine:latest
+
+RUN apk --no-cache add ca-certificates
+
+WORKDIR /root/
+
+# Copy the binary from builder
+COPY --from=builder /app/api-service .
+
+# Expose port
 EXPOSE 8080
 
-ENTRYPOINT ["dotnet", "api.dll"]
+# Run the binary
+CMD ["./api-service"]

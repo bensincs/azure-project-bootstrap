@@ -1,6 +1,23 @@
-bin/
-obj/
-*.user
-*.suo
-.vs/
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+api-service
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool
+*.out
+
+# Go workspace file
+go.work
+
+# IDE
 .vscode/
+.idea/
+
+# OS
+.DS_Store

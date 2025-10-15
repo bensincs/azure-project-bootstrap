@@ -87,33 +87,11 @@ FQDN=$(az containerapp show \
   --output tsv)
 
 echo ""
-echo "🌐 UI Service URL: https://$FQDN"
+echo "🌐 UI Service URL (internal): https://$FQDN"
 echo ""
-
-# Apply UI policy to APIM (no OpenAPI, just policy)
+echo "🌍 Public access via Application Gateway:"
 cd ../../infra/core
-echo "📋 Applying APIM policy for UI service..."
-APIM_NAME=$(terraform output -raw apim_name)
+APPGW_IP=$(terraform output -raw app_gateway_public_ip)
 cd ../../services/ui
-
-# Update policy with current values
-POLICY_FILE="./apim-policy.xml"
-POLICY_CONTENT=$(cat "$POLICY_FILE")
-POLICY_CONTENT="${POLICY_CONTENT//\$\{BACKEND_URL\}/https://$FQDN}"
-
-# Create temp policy file
-TEMP_POLICY=$(mktemp)
-echo "$POLICY_CONTENT" > "$TEMP_POLICY"
-
-# Apply custom policy
-az apim api policy create \
-  --resource-group "$RESOURCE_GROUP" \
-  --service-name "$APIM_NAME" \
-  --api-id "ui-service" \
-  --xml-content "@$TEMP_POLICY" || echo "⚠️  Policy update failed (API may not exist yet)"
-
-# Clean up temp file
-rm "$TEMP_POLICY"
-
-echo "✅ Policy applied!"
+echo "   URL: https://$APPGW_IP"
 echo ""

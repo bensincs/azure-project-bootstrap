@@ -1,5 +1,5 @@
-# Application Gateway for routing to private Container Apps
-# APIM connects to App Gateway via private IP, App Gateway routes to private Container Apps
+# Application Gateway for routing directly to private Container Apps
+# Routes public traffic to Container Apps without APIM
 
 # User-assigned identity for Application Gateway to access Key Vault
 resource "azurerm_user_assigned_identity" "app_gateway" {
@@ -33,7 +33,6 @@ resource "azurerm_application_gateway" "core" {
     capacity = 2
   }
 
-  # System-assigned managed identity to access Key Vault
   identity {
     type         = "UserAssigned"
     identity_ids = [azurerm_user_assigned_identity.app_gateway.id]
@@ -46,7 +45,7 @@ resource "azurerm_application_gateway" "core" {
 
   # SSL certificate from Key Vault
   ssl_certificate {
-    name                = "apim-ssl-cert"
+    name                = "app-ssl-cert"
     key_vault_secret_id = azurerm_key_vault_certificate.app_gateway.secret_id
   }
 
@@ -61,61 +60,82 @@ resource "azurerm_application_gateway" "core" {
     port = 80
   }
 
-  # Public frontend IP (required for v2 SKU)
+  # Public frontend IP
   frontend_ip_configuration {
     name                 = "public-frontend-ip-config"
     public_ip_address_id = azurerm_public_ip.app_gateway.id
   }
 
-  # Private frontend IP (for APIM to connect)
-  frontend_ip_configuration {
-    name                          = "private-frontend-ip-config"
-    subnet_id                     = azurerm_subnet.app_gateway.id
-    private_ip_address_allocation = "Static"
-    private_ip_address            = "10.0.5.10" # Must be within app_gateway subnet range (10.0.5.0/24)
-  }
-
-  # Backend pools - pointing to APIM
+  # Backend pools - pointing to Container Apps
   backend_address_pool {
-    name         = "apim-backend-pool"
-    ip_addresses = [azurerm_api_management.core.private_ip_addresses[0]]
+    name  = "api-backend-pool"
+    fqdns = [azurerm_container_app.api_service.latest_revision_fqdn]
   }
 
-  # Backend HTTP settings for APIM
+  backend_address_pool {
+    name  = "ui-backend-pool"
+    fqdns = [azurerm_container_app.ui_service.latest_revision_fqdn]
+  }
+
+  # Backend HTTP settings for API Service
   backend_http_settings {
-    name                  = "apim-http-settings"
+    name                  = "api-http-settings"
     cookie_based_affinity = "Disabled"
     port                  = 443
     protocol              = "Https"
     request_timeout       = 60
-    probe_name            = "apim-health-probe"
-    host_name             = replace(azurerm_api_management.core.gateway_url, "https://", "")
+    probe_name            = "api-health-probe"
+    host_name             = azurerm_container_app.api_service.latest_revision_fqdn
   }
 
-  # Health probe for APIM
+  # Backend HTTP settings for UI Service
+  backend_http_settings {
+    name                  = "ui-http-settings"
+    cookie_based_affinity = "Disabled"
+    port                  = 443
+    protocol              = "Https"
+    request_timeout       = 60
+    probe_name            = "ui-health-probe"
+    host_name             = azurerm_container_app.ui_service.latest_revision_fqdn
+  }
+
+  # Health probes
   probe {
-    name                = "apim-health-probe"
+    name                = "api-health-probe"
     protocol            = "Https"
-    path                = "/status-0123456789abcdef"
+    path                = "/api/health"
     interval            = 30
     timeout             = 30
     unhealthy_threshold = 3
-    host                = replace(azurerm_api_management.core.gateway_url, "https://", "")
+    host                = azurerm_container_app.api_service.latest_revision_fqdn
     match {
       status_code = ["200-399"]
     }
   }
 
-  # HTTPS Listener on public frontend
+  probe {
+    name                = "ui-health-probe"
+    protocol            = "Https"
+    path                = "/"
+    interval            = 30
+    timeout             = 30
+    unhealthy_threshold = 3
+    host                = azurerm_container_app.ui_service.latest_revision_fqdn
+    match {
+      status_code = ["200-399"]
+    }
+  }
+
+  # HTTPS Listener
   http_listener {
     name                           = "https-listener"
     frontend_ip_configuration_name = "public-frontend-ip-config"
     frontend_port_name             = "https-port"
     protocol                       = "Https"
-    ssl_certificate_name           = "apim-ssl-cert"
+    ssl_certificate_name           = "app-ssl-cert"
   }
 
-  # HTTP to HTTPS redirect listener
+  # HTTP Listener
   http_listener {
     name                           = "http-listener"
     frontend_ip_configuration_name = "public-frontend-ip-config"
@@ -141,20 +161,34 @@ resource "azurerm_application_gateway" "core" {
     priority                    = 50
   }
 
-  # HTTPS routing rule - all traffic to APIM
+  # Path-based routing rule for HTTPS traffic
   request_routing_rule {
-    name                       = "apim-routing-rule"
-    rule_type                  = "Basic"
-    http_listener_name         = "https-listener"
-    backend_address_pool_name  = "apim-backend-pool"
-    backend_http_settings_name = "apim-http-settings"
-    priority                   = 100
+    name               = "https-routing-rule"
+    rule_type          = "PathBasedRouting"
+    http_listener_name = "https-listener"
+    url_path_map_name  = "path-routing"
+    priority           = 100
+  }
+
+  # URL path map for routing
+  url_path_map {
+    name                               = "path-routing"
+    default_backend_address_pool_name  = "ui-backend-pool"
+    default_backend_http_settings_name = "ui-http-settings"
+
+    path_rule {
+      name                       = "api-rule"
+      paths                      = ["/api/*"]
+      backend_address_pool_name  = "api-backend-pool"
+      backend_http_settings_name = "api-http-settings"
+    }
   }
 
   tags = local.common_tags
 
   depends_on = [
-    azurerm_api_management.core,
+    azurerm_container_app.api_service,
+    azurerm_container_app.ui_service,
     azurerm_key_vault_certificate.app_gateway,
   ]
 }

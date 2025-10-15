@@ -28,11 +28,6 @@ output "application_url" {
   value       = "https://${azurerm_public_ip.app_gateway.ip_address}"
 }
 
-output "apim_private_ip" {
-  description = "Private IP address of the API Management (internal only)"
-  value       = azurerm_api_management.core.private_ip_addresses[0]
-}
-
 output "container_registry_name" {
   description = "Name of the Azure Container Registry"
   value       = azurerm_container_registry.core.name
@@ -41,31 +36,6 @@ output "container_registry_name" {
 output "container_registry_login_server" {
   description = "Login server for the Azure Container Registry"
   value       = azurerm_container_registry.core.login_server
-}
-
-output "container_app_name" {
-  description = "Name of the Container App (legacy - use notification_service_name)"
-  value       = azurerm_container_app.notification_service.name
-}
-
-output "notification_service_name" {
-  description = "Name of the Notification Service Container App"
-  value       = azurerm_container_app.notification_service.name
-}
-
-output "notification_service_fqdn" {
-  description = "FQDN of the Notification Service Container App"
-  value       = azurerm_container_app.notification_service.latest_revision_fqdn
-}
-
-output "notification_api_url" {
-  description = "URL for the notification API"
-  value       = "https://${azurerm_container_app.notification_service.latest_revision_fqdn}"
-}
-
-output "notification_api_websocket_url" {
-  description = "WebSocket URL for the notification API"
-  value       = "wss://${azurerm_container_app.notification_service.latest_revision_fqdn}/ws"
 }
 
 # API Service Outputs
@@ -95,11 +65,6 @@ output "ui_service_fqdn" {
 }
 
 # Application Gateway Outputs
-output "app_gateway_private_ip" {
-  description = "Private IP address of the Application Gateway (internal only)"
-  value       = azurerm_application_gateway.core.frontend_ip_configuration[0].private_ip_address
-}
-
 output "app_gateway_name" {
   description = "Name of the Application Gateway"
   value       = azurerm_application_gateway.core.name
@@ -210,17 +175,6 @@ output "azure_ad_application_name" {
 output "azure_ad_service_principal_id" {
   description = "Object ID of the Service Principal"
   value       = azuread_service_principal.main.object_id
-}
-
-# API Management with App Registration
-output "apim_gateway_url_full" {
-  description = "Full APIM gateway URL with protocol"
-  value       = "https://${azurerm_api_management.core.gateway_url}"
-}
-
-output "apim_name" {
-  description = "Name of the API Management instance"
-  value       = azurerm_api_management.core.name
 }
 
 # Convenient aliases for deploy scripts

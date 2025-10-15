@@ -25,24 +25,6 @@ variable "tags" {
   default     = {}
 }
 
-# API Management Configuration
-variable "apim_publisher_name" {
-  description = "Publisher name for API Management"
-  type        = string
-  default     = "MyCompany"
-}
-
-variable "apim_publisher_email" {
-  description = "Publisher email for API Management"
-  type        = string
-}
-
-variable "apim_sku_name" {
-  description = "SKU for API Management (Developer_1, Basic_1, Standard_1, Premium_1)"
-  type        = string
-  default     = "Developer_1"
-}
-
 # VPN Gateway Configuration
 variable "enable_vpn_gateway" {
   description = "Enable VPN Gateway for secure remote access"
