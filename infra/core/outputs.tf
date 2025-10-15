@@ -44,7 +44,12 @@ output "container_registry_login_server" {
 }
 
 output "container_app_name" {
-  description = "Name of the Container App"
+  description = "Name of the Container App (legacy - use notification_service_name)"
+  value       = azurerm_container_app.notification_service.name
+}
+
+output "notification_service_name" {
+  description = "Name of the Notification Service Container App"
   value       = azurerm_container_app.notification_service.name
 }
 
@@ -77,6 +82,16 @@ output "api_service_url" {
 output "api_service_fqdn" {
   description = "FQDN of the API Container App"
   value       = azurerm_container_app.api_service.latest_revision_fqdn
+}
+
+output "ui_service_name" {
+  description = "Name of the UI Service Container App"
+  value       = azurerm_container_app.ui_service.name
+}
+
+output "ui_service_fqdn" {
+  description = "FQDN of the UI Service Container App"
+  value       = azurerm_container_app.ui_service.latest_revision_fqdn
 }
 
 # Application Gateway Outputs
@@ -217,34 +232,4 @@ output "tenant_id" {
 output "client_id" {
   description = "Azure AD Client ID (alias for deploy scripts)"
   value       = azuread_application.main.client_id
-}
-
-output "api_service_name" {
-  description = "Name of the API service Container App"
-  value       = azurerm_container_app.api_service.name
-}
-
-output "notification_service_name" {
-  description = "Name of the Notification service Container App"
-  value       = azurerm_container_app.notification_service.name
-}
-
-output "ui_service_name" {
-  description = "Name of the UI service Container App"
-  value       = azurerm_container_app.ui_service.name
-}
-
-output "api_service_fqdn" {
-  description = "FQDN of the API service"
-  value       = azurerm_container_app.api_service.ingress[0].fqdn
-}
-
-output "notification_service_fqdn" {
-  description = "FQDN of the Notification service"
-  value       = azurerm_container_app.notification_service.ingress[0].fqdn
-}
-
-output "ui_service_fqdn" {
-  description = "FQDN of the UI service"
-  value       = azurerm_container_app.ui_service.ingress[0].fqdn
 }
