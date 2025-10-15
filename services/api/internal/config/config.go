@@ -2,7 +2,9 @@ package config
 
 import (
 	"fmt"
-	"os"
+	"log"
+
+	"github.com/spf13/viper"
 )
 
 // Config holds the application configuration
@@ -13,26 +15,46 @@ type Config struct {
 	SkipTokenVerification bool // For development only
 }
 
-// Load reads configuration from environment variables
+// Load reads configuration from .env file and environment variables
 func Load() (*Config, error) {
-	tenantID := os.Getenv("AZURE_TENANT_ID")
+	// Set up Viper to read from .env file
+	viper.SetConfigName(".env")
+	viper.SetConfigType("env")
+	viper.AddConfigPath(".")
+
+	// Allow environment variables to override .env file
+	viper.AutomaticEnv()
+
+	// Read the .env file (if it exists)
+	if err := viper.ReadInConfig(); err != nil {
+		// .env file is optional if all env vars are set
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return nil, fmt.Errorf("error reading config file: %w", err)
+		}
+		log.Println("⚠️  No .env file found, using environment variables only")
+	} else {
+		log.Printf("✅ Loaded configuration from: %s\n", viper.ConfigFileUsed())
+	}
+
+	// Read required configuration
+	tenantID := viper.GetString("AZURE_TENANT_ID")
 	if tenantID == "" {
-		return nil, fmt.Errorf("AZURE_TENANT_ID environment variable is required")
+		return nil, fmt.Errorf("AZURE_TENANT_ID is required (set in .env or environment)")
 	}
 
-	clientID := os.Getenv("AZURE_CLIENT_ID")
+	clientID := viper.GetString("AZURE_CLIENT_ID")
 	if clientID == "" {
-		return nil, fmt.Errorf("AZURE_CLIENT_ID environment variable is required")
+		return nil, fmt.Errorf("AZURE_CLIENT_ID is required (set in .env or environment)")
 	}
 
-	port := os.Getenv("PORT")
+	port := viper.GetString("PORT")
 	if port == "" {
 		port = "8080"
 	}
 
-	skipVerification := os.Getenv("SKIP_TOKEN_VERIFICATION") == "true"
+	skipVerification := viper.GetBool("SKIP_TOKEN_VERIFICATION")
 	if skipVerification {
-		fmt.Println("⚠️  WARNING: Token signature verification is DISABLED - for development only!")
+		log.Println("⚠️  WARNING: Token signature verification is DISABLED - for development only!")
 	}
 
 	return &Config{

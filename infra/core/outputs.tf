@@ -46,12 +46,12 @@ output "api_service_name" {
 
 output "api_service_url" {
   description = "Direct URL for the API service"
-  value       = "https://${azurerm_container_app.api_service.latest_revision_fqdn}"
+  value       = "https://${azurerm_container_app.api_service.ingress[0].fqdn}"
 }
 
 output "api_service_fqdn" {
   description = "FQDN of the API Container App"
-  value       = azurerm_container_app.api_service.latest_revision_fqdn
+  value       = azurerm_container_app.api_service.ingress[0].fqdn
 }
 
 output "ui_service_name" {
@@ -61,7 +61,7 @@ output "ui_service_name" {
 
 output "ui_service_fqdn" {
   description = "FQDN of the UI Service Container App"
-  value       = azurerm_container_app.ui_service.latest_revision_fqdn
+  value       = azurerm_container_app.ui_service.ingress[0].fqdn
 }
 
 # Application Gateway Outputs

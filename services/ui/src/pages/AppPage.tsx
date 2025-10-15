@@ -35,7 +35,6 @@ export default function AppPage() {
   const [messageInput, setMessageInput] = useState("");
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [sendingMessage, setSendingMessage] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
 
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
 
@@ -57,33 +56,6 @@ export default function AppPage() {
     } catch (error) {
       console.error("Failed to fetch active users:", error);
     }
-  };
-
-  // Event handlers
-  const handleChatMessage = (event: ChatEvent) => {
-    setMessages((prev) => [
-      ...prev,
-      {
-        type: "chat",
-        from: event.payload.from,
-        name: event.payload.name,
-        email: event.payload.email,
-        content: event.payload.content,
-        timestamp: Date.now(),
-      },
-    ]);
-  };
-
-  const handleUserJoined = (event: UserEvent) => {
-    console.log("User joined:", event);
-    // Refresh active users list
-    fetchActiveUsers();
-  };
-
-  const handleUserLeft = (event: UserEvent) => {
-    console.log("User left:", event);
-    // Refresh active users list
-    fetchActiveUsers();
   };
 
   // Subscribe to events

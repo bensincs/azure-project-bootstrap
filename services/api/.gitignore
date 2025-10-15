@@ -15,6 +15,9 @@ api-service
 # Go workspace file
 go.work
 
+# Environment files
+.env.local
+
 # IDE
 .vscode/
 .idea/

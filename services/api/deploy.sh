@@ -46,12 +46,48 @@ echo "⬆️  Pushing image to ACR..."
 docker push "$IMAGE_NAME"
 docker push "$IMAGE_TAG"
 
-echo "🔄 Updating Container App..."
-az containerapp update \
-  --name "$CONTAINER_APP_NAME" \
-  --resource-group "$RG_NAME" \
-  --image "$IMAGE_TAG" \
-  --output none
+echo "� Reading environment variables from .env file..."
+ENV_VARS=""
+if [ -f "$SCRIPT_DIR/.env" ]; then
+  # Read .env file and convert to --set-env-vars format
+  while IFS='=' read -r key value; do
+    # Skip empty lines and comments
+    [[ -z "$key" || "$key" =~ ^#.*$ ]] && continue
+    # Remove quotes from value if present
+    value="${value%\"}"
+    value="${value#\"}"
+    # Remove trailing whitespace/comments
+    value=$(echo "$value" | sed 's/[[:space:]]*#.*//')
+    # Add to env vars string
+    if [ -n "$ENV_VARS" ]; then
+      ENV_VARS="${ENV_VARS} ${key}=${value}"
+    else
+      ENV_VARS="${key}=${value}"
+    fi
+  done < "$SCRIPT_DIR/.env"
+
+  echo "✅ Loaded environment variables from .env"
+  echo "   Variables: $(echo "$ENV_VARS" | grep -o '[A-Z_]*=' | tr '\n' ' ')"
+else
+  echo "⚠️  No .env file found at $SCRIPT_DIR/.env"
+  echo "   Container App will use existing environment variables"
+fi
+
+echo "�🔄 Updating Container App..."
+if [ -n "$ENV_VARS" ]; then
+  az containerapp update \
+    --name "$CONTAINER_APP_NAME" \
+    --resource-group "$RG_NAME" \
+    --image "$IMAGE_TAG" \
+    --set-env-vars $ENV_VARS \
+    --output none
+else
+  az containerapp update \
+    --name "$CONTAINER_APP_NAME" \
+    --resource-group "$RG_NAME" \
+    --image "$IMAGE_TAG" \
+    --output none
+fi
 
 echo "✅ Deployment complete!"
 

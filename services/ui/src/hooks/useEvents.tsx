@@ -60,7 +60,8 @@ export const EventsProvider: React.FC<EventsProviderProps> = ({ children }) => {
   const wsUrl = import.meta.env.VITE_WS_URL || "ws://localhost:8080/api/ws";
 
   const handlersRef = useRef<Map<EventType, Set<EventHandler>>>(new Map());
-  const [connectionStatus, setConnectionStatus] = React.useState<ConnectionStatus>("disconnected");
+  const [connectionStatus, setConnectionStatus] =
+    React.useState<ConnectionStatus>("disconnected");
 
   const connect = useCallback(() => {
     if (!user || wsRef.current?.readyState === WebSocket.OPEN) {

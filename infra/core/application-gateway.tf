@@ -69,12 +69,12 @@ resource "azurerm_application_gateway" "core" {
   # Backend pools - pointing to Container Apps
   backend_address_pool {
     name  = "api-backend-pool"
-    fqdns = [azurerm_container_app.api_service.latest_revision_fqdn]
+    fqdns = [azurerm_container_app.api_service.ingress[0].fqdn]
   }
 
   backend_address_pool {
     name  = "ui-backend-pool"
-    fqdns = [azurerm_container_app.ui_service.latest_revision_fqdn]
+    fqdns = [azurerm_container_app.ui_service.ingress[0].fqdn]
   }
 
   # Backend HTTP settings for API Service
@@ -85,7 +85,7 @@ resource "azurerm_application_gateway" "core" {
     protocol              = "Https"
     request_timeout       = 60
     probe_name            = "api-health-probe"
-    host_name             = azurerm_container_app.api_service.latest_revision_fqdn
+    host_name             = azurerm_container_app.api_service.ingress[0].fqdn
   }
 
   # Backend HTTP settings for UI Service
@@ -96,31 +96,31 @@ resource "azurerm_application_gateway" "core" {
     protocol              = "Https"
     request_timeout       = 60
     probe_name            = "ui-health-probe"
-    host_name             = azurerm_container_app.ui_service.latest_revision_fqdn
+    host_name             = azurerm_container_app.ui_service.ingress[0].fqdn
   }
 
   # Health probes
   probe {
-    name                = "api-health-probe"
-    protocol            = "Https"
-    path                = "/api/health"
-    interval            = 30
-    timeout             = 30
-    unhealthy_threshold = 3
-    host                = azurerm_container_app.api_service.latest_revision_fqdn
+    name                                      = "api-health-probe"
+    protocol                                  = "Https"
+    path                                      = "/api/health"
+    interval                                  = 30
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
     match {
       status_code = ["200-399"]
     }
   }
 
   probe {
-    name                = "ui-health-probe"
-    protocol            = "Https"
-    path                = "/"
-    interval            = 30
-    timeout             = 30
-    unhealthy_threshold = 3
-    host                = azurerm_container_app.ui_service.latest_revision_fqdn
+    name                                      = "ui-health-probe"
+    protocol                                  = "Https"
+    path                                      = "/health"
+    interval                                  = 30
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
     match {
       status_code = ["200-399"]
     }
