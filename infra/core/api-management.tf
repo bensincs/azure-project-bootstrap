@@ -126,7 +126,7 @@ resource "azurerm_api_management_api_policy" "main" {
     API_SERVICE_FQDN          = azurerm_container_app.api_service.ingress[0].fqdn
     NOTIFICATION_SERVICE_FQDN = azurerm_container_app.notification_service.ingress[0].fqdn
     UI_SERVICE_FQDN           = azurerm_container_app.ui_service.ingress[0].fqdn
-    TENANT_ID                 = var.aad_tenant_id
+    TENANT_ID                 = data.azuread_client_config.current.tenant_id
     CLIENT_ID                 = azuread_application.main.client_id
   })
 
