@@ -1,26 +1,49 @@
 from typing import Dict, AsyncGenerator, Optional
-from agent_framework import ChatAgent
+from agent_framework import ChatAgent, MCPStdioTool
 from agent_framework.azure import AzureOpenAIChatClient
-from azure.identity.aio import AzureCliCredential
+from azure.identity import AzureCliCredential
 from app.config import settings
 from app.models.chat import ChatMessage
 from datetime import datetime
 
 
 class ChatService:
-    """Service for managing chat conversations using Microsoft Agent Framework with threads"""
+    """Service for managing chat conversations using Microsoft Agent Framework with threads and MCP tools"""
 
     def __init__(self):
         # Store serialized thread data per user (in-memory for simplicity)
         # In production, this should be stored in a database
         self.user_threads: Dict[str, dict] = {}
 
-        # Store agent instance (reused across requests)
+        # Store agent and MCP tool instances (reused across requests)
         self._agent: Optional[ChatAgent] = None
+        self._mcp_tool: Optional[MCPStdioTool] = None
+
+    async def _get_mcp_tool(self) -> MCPStdioTool:
+        """Get or create the GitHub MCP tool instance"""
+        if self._mcp_tool is None:
+            self._mcp_tool = MCPStdioTool(
+                name="github",
+                command="npx",
+                args=["@modelcontextprotocol/server-github"],
+                load_prompts=False,  # GitHub MCP server doesn't support prompts
+                # Environment variables for the MCP server
+                env={
+                    "GITHUB_PERSONAL_ACCESS_TOKEN": settings.github_token
+                }
+            )
+
+            # Initialize the tool - this starts the MCP server process
+            await self._mcp_tool.__aenter__()
+
+        return self._mcp_tool
 
     async def _get_agent(self) -> ChatAgent:
         """Get or create the chat agent instance"""
         if self._agent is None:
+            # Get MCP tool first
+            mcp_tool = await self._get_mcp_tool()
+
             # Use AzureCli credential for authentication
             credential = AzureCliCredential()
 
@@ -31,10 +54,17 @@ class ChatService:
                 deployment_name=settings.azure_openai_deployment_name,
             )
 
+            # Create agent with tools configured
             self._agent = ChatAgent(
                 chat_client=chat_client,
-                instructions="You are a helpful AI assistant. Provide clear, accurate, and friendly responses.",
-                name="Assistant",
+                tools=[mcp_tool],  # Add tools at agent construction
+                instructions=(
+                    "You are a helpful assistant that answers questions about the "
+                    "bensincs/azure-project-bootstrap GitHub repository. "
+                    "Use the GitHub tools to search and retrieve information from the repository. "
+                    "Provide clear, direct answers based on what you find."
+                ),
+                name="AzureProjectBootstrapAssistant",
             )
 
         return self._agent
@@ -62,7 +92,7 @@ class ChatService:
         agent = await self._get_agent()
         thread = await self._get_or_create_thread(user_id)
 
-        # Run the agent with the thread to maintain conversation history
+        # Run the agent with the thread (tools are already configured)
         response = await agent.run(message, thread=thread)
         response_text = response.text
 
@@ -79,7 +109,9 @@ class ChatService:
         thread = await self._get_or_create_thread(user_id)
 
         # Stream the agent's response with thread context
-        async for chunk in agent.run_stream(message, thread=thread):
+        # stream_agent_with_tools=True enables streaming during tool execution
+        async for chunk in agent.run_stream(message, thread=thread, stream_agent_with_tools=True):
+            print(chunk)
             if hasattr(chunk, "text") and chunk.text:
                 yield chunk.text
 
@@ -116,6 +148,12 @@ class ChatService:
         """Clear chat history for a user"""
         if user_id in self.user_threads:
             del self.user_threads[user_id]
+
+    async def cleanup(self):
+        """Cleanup resources including MCP tool connection"""
+        if self._mcp_tool is not None:
+            await self._mcp_tool.__aexit__(None, None, None)
+            self._mcp_tool = None
 
 
 # Create a single instance

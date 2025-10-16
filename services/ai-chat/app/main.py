@@ -3,12 +3,29 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from app.config import settings
 from app.routers import user, chat
+from app.services.chat import chat_service
+import logging
+from contextlib import asynccontextmanager
+
+# Set agent_framework to DEBUG to see all framework logs
+logging.getLogger("agent_framework").setLevel(logging.DEBUG)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Lifespan context manager to initialize and cleanup resources"""
+    # Startup: Initialize MCP tool
+    await chat_service._get_mcp_tool()
+    yield
+    # Shutdown: Cleanup MCP tool
+    await chat_service.cleanup()
+
 
 # Create the main FastAPI app
 app = FastAPI(title=settings.app_name)
 
-# Create a sub-application for ai-chat
-ai_chat_app = FastAPI(title="AI Chat API")
+# Create a sub-application for ai-chat with lifespan
+ai_chat_app = FastAPI(title="AI Chat API", lifespan=lifespan)
 
 # Configure CORS
 ai_chat_app.add_middleware(

@@ -22,6 +22,9 @@ class Settings(BaseSettings):
     azure_openai_endpoint: str = ""
     azure_openai_deployment_name: str = "gpt-4o-mini"  # Default to GPT-4 mini
 
+    # GitHub MCP Server settings
+    github_token: str = ""  # GitHub Personal Access Token for MCP server
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",
