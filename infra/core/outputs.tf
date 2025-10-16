@@ -187,3 +187,19 @@ output "client_id" {
   description = "Azure AD Client ID (alias for deploy scripts)"
   value       = azuread_application.main.client_id
 }
+
+# AI Chat Service Outputs
+output "ai_chat_service_name" {
+  description = "Name of the AI Chat Container App"
+  value       = azurerm_container_app.ai_chat_service.name
+}
+
+output "ai_chat_service_url" {
+  description = "Direct URL for the AI Chat service"
+  value       = "https://${azurerm_container_app.ai_chat_service.ingress[0].fqdn}"
+}
+
+output "ai_chat_service_fqdn" {
+  description = "FQDN of the AI Chat Container App"
+  value       = azurerm_container_app.ai_chat_service.ingress[0].fqdn
+}

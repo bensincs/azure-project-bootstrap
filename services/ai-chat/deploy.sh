@@ -21,8 +21,7 @@ cd "$INFRA_DIR"
 echo "📋 Getting infrastructure details..."
 RG_NAME=$(terraform output -raw resource_group_name)
 ACR_NAME=$(terraform output -raw container_registry_name)
-# Note: Update this output name based on your Terraform configuration
-CONTAINER_APP_NAME=$(terraform output -raw ai_chat_service_name 2>/dev/null || echo "ai-chat-service-${ENVIRONMENT}")
+CONTAINER_APP_NAME=$(terraform output -raw ai_chat_service_name)
 
 echo "Resource Group: $RG_NAME"
 echo "Container Registry: $ACR_NAME"
