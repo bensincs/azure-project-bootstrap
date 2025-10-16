@@ -3,7 +3,7 @@
 # This is temporary and should eventually be managed here
 data "azurerm_cognitive_account" "openai" {
   name                = "bensincs" # Your OpenAI account name from the endpoint
-  resource_group_name = "rg-bensincs-openai"
+  resource_group_name = "OpenAI"
 }
 
 # Grant AI Chat Service managed identity access to Azure OpenAI
