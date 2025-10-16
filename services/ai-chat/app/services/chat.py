@@ -1,7 +1,7 @@
 from typing import Dict, AsyncGenerator, Optional
 from agent_framework import ChatAgent, MCPStdioTool
 from agent_framework.azure import AzureOpenAIChatClient
-from azure.identity import DefaultAzureCredential
+from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from app.config import settings
 from app.models.chat import ChatMessage
 from datetime import datetime
@@ -47,11 +47,17 @@ class ChatService:
             # Use DefaultAzureCredential for authentication
             # This uses Managed Identity in Azure and falls back to Azure CLI locally
             credential = DefaultAzureCredential()
+            
+            # Create a token provider for Azure OpenAI
+            token_provider = get_bearer_token_provider(
+                credential,
+                "https://cognitiveservices.azure.com/.default"
+            )
 
             # Create Azure OpenAI chat client
             chat_client = AzureOpenAIChatClient(
                 endpoint=settings.azure_openai_endpoint,
-                credential=credential,
+                ad_token_provider=token_provider,
                 deployment_name=settings.azure_openai_deployment_name,
             )
 

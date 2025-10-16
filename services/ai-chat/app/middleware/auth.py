@@ -116,7 +116,7 @@ async def get_current_user(
                 token,
                 public_key,
                 algorithms=["RS256"],
-                audience=settings.azure_client_id,
+                audience=settings.azure_ad_client_id,
                 options={
                     "verify_signature": True,
                     "verify_exp": True,
@@ -167,7 +167,7 @@ async def get_current_user(
         logger.error(f"Invalid audience: {e}")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token audience. Expected: {settings.azure_client_id}",
+            detail=f"Invalid token audience. Expected: {settings.azure_ad__client_id}",
         )
     except jwt.InvalidTokenError as e:
         logger.error(f"Invalid token: {e}")

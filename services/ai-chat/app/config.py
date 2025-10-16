@@ -14,8 +14,8 @@ class Settings(BaseSettings):
     api_version: str = "v1"
 
     # Azure AD JWT Authentication
-    azure_tenant_id: str = ""
-    azure_client_id: str = ""
+    azure_ad_tenant_id: str = ""
+    azure_ad_client_id: str = ""
     skip_token_verification: bool = False  # Set to true ONLY for development
 
     # Azure OpenAI settings
@@ -34,15 +34,15 @@ class Settings(BaseSettings):
 
     def get_issuer(self) -> str:
         """Get the expected JWT issuer (Azure AD v2.0 endpoint)"""
-        return f"https://login.microsoftonline.com/{self.azure_tenant_id}/v2.0"
+        return f"https://login.microsoftonline.com/{self.azure_ad_tenant_id}/v2.0"
 
     def get_issuer_v1(self) -> str:
         """Get the expected JWT issuer (Azure AD v1.0 endpoint)"""
-        return f"https://sts.windows.net/{self.azure_tenant_id}/"
+        return f"https://sts.windows.net/{self.azure_ad_tenant_id}/"
 
     def get_jwks_url(self) -> str:
         """Get the JWKS URL for Azure AD"""
-        return f"https://login.microsoftonline.com/{self.azure_tenant_id}/discovery/v2.0/keys"
+        return f"https://login.microsoftonline.com/{self.azure_ad_tenant_id}/discovery/v2.0/keys"
 
 
 # Create a single instance to be imported throughout the app
