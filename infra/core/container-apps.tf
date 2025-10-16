@@ -135,6 +135,16 @@ resource "azurerm_container_app" "ui_service" {
   }
 }
 
+# Create a user-assigned managed identity for AI Chat Service
+resource "azurerm_user_assigned_identity" "ai_chat" {
+  name                = "id-${var.resource_name_prefix}-ai-chat-${var.environment}"
+  resource_group_name = azurerm_resource_group.core.name
+  location            = azurerm_resource_group.core.location
+
+  tags = local.common_tags
+}
+
+
 # Container App for AI Chat Service
 resource "azurerm_container_app" "ai_chat_service" {
   name                         = "ca-${var.resource_name_prefix}-ai-chat-service-${var.environment}"
@@ -144,7 +154,8 @@ resource "azurerm_container_app" "ai_chat_service" {
   workload_profile_name        = "Consumption"
 
   identity {
-    type = "SystemAssigned"
+    type         = "UserAssigned"
+    identity_ids = [azurerm_user_assigned_identity.ai_chat.id]
   }
 
   registry {
@@ -182,6 +193,11 @@ resource "azurerm_container_app" "ai_chat_service" {
       env {
         name  = "AZURE_AD_CLIENT_ID"
         value = azuread_application.main.client_id
+      }
+      # Managed Identity Client ID for DefaultAzureCredential
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azurerm_user_assigned_identity.ai_chat.client_id
       }
     }
 
