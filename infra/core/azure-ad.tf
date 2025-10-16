@@ -21,12 +21,19 @@ resource "azuread_application" "main" {
 
   # Single Page Application configuration (Authorization Code Flow with PKCE)
   single_page_application {
-    redirect_uris = [
-      "https://${azurerm_public_ip.app_gateway.ip_address}/",
-      "https://${azurerm_public_ip.app_gateway.ip_address}/auth/callback",
-      "http://localhost:5173/",              # Vite dev server
-      "http://localhost:5173/auth/callback", # Vite callback
-    ]
+    redirect_uris = concat(
+      var.custom_domain != "" ? [
+        "https://${var.custom_domain}/",
+        "https://${var.custom_domain}/auth/callback",
+      ] : [
+        "https://${azurerm_public_ip.app_gateway.ip_address}/",
+        "https://${azurerm_public_ip.app_gateway.ip_address}/auth/callback",
+      ],
+      [
+        "http://localhost:5173/",              # Vite dev server
+        "http://localhost:5173/auth/callback", # Vite callback
+      ]
+    )
   }
 
   # Required resource access (Microsoft Graph)

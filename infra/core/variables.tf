@@ -52,3 +52,10 @@ variable "enable_vpn_gateway" {
   type        = bool
   default     = false
 }
+
+# Custom Domain Configuration
+variable "custom_domain" {
+  description = "Custom domain for the application (e.g., launchpad.sincs.dev). If not set, will use Application Gateway public IP"
+  type        = string
+  default     = ""
+}

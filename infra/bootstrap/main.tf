@@ -355,7 +355,7 @@ resource "local_file" "tfvars" {
     key_vault_id                    = "${azurerm_key_vault.bootstrap.id}"
     key_vault_name                  = "${azurerm_key_vault.bootstrap.name}"
     key_vault_uri                   = "${azurerm_key_vault.bootstrap.vault_uri}"
-    app_gateway_ssl_certificate_id  = "${azurerm_key_vault_certificate.app_gateway.secret_id}"
+    app_gateway_ssl_certificate_id  = "${azurerm_key_vault_certificate.app_gateway.versionless_secret_id}"
 
     # Add your custom variables below this line
     # Example:
