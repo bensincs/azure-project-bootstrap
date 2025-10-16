@@ -185,7 +185,7 @@ resource "azurerm_container_app" "ai_chat_service" {
       }
       env {
         name  = "AZURE_AD_CLIENT_ID"
-        value = azuread_application.api_app.client_id
+        value = azuread_application.main.client_id
       }
     }
 
