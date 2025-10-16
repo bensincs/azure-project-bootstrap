@@ -168,16 +168,8 @@ resource "azurerm_container_app" "ai_chat_service" {
         value = ""
       }
       env {
-        name  = "AZURE_OPENAI_API_KEY"
-        value = ""
-      }
-      env {
         name  = "AZURE_OPENAI_DEPLOYMENT_NAME"
         value = ""
-      }
-      env {
-        name  = "AZURE_OPENAI_API_VERSION"
-        value = "2024-02-15-preview"
       }
       env {
         name  = "AZURE_AD_TENANT_ID"

@@ -40,11 +40,11 @@ async def send_message_stream(
 @router.get("/history", response_model=List[ChatMessage])
 async def get_history(current_user: User = Depends(get_current_user)):
     """Get chat history for the current user"""
-    return chat_service.get_history(current_user.id)
+    return await chat_service.get_history(current_user.id)
 
 
 @router.delete("/history")
 async def clear_history(current_user: User = Depends(get_current_user)):
     """Clear chat history for the current user"""
-    chat_service.clear_history(current_user.id)
+    await chat_service.clear_history(current_user.id)
     return {"message": "Chat history cleared"}

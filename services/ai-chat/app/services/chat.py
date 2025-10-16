@@ -1,126 +1,121 @@
-from typing import Dict, AsyncGenerator
-from semantic_kernel import Kernel
-from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
-from semantic_kernel.contents import ChatHistory
+from typing import Dict, AsyncGenerator, Optional
+from agent_framework import ChatAgent
+from agent_framework.azure import AzureOpenAIChatClient
+from azure.identity.aio import AzureCliCredential
 from app.config import settings
 from app.models.chat import ChatMessage
 from datetime import datetime
 
 
 class ChatService:
-    """Service for managing chat conversations using Semantic Kernel"""
+    """Service for managing chat conversations using Microsoft Agent Framework with threads"""
 
     def __init__(self):
-        # Store chat histories per user (in-memory for simplicity)
-        self.user_histories: Dict[str, ChatHistory] = {}
+        # Store serialized thread data per user (in-memory for simplicity)
+        # In production, this should be stored in a database
+        self.user_threads: Dict[str, dict] = {}
 
-        # Initialize Semantic Kernel
-        self.kernel = Kernel()
+        # Store agent instance (reused across requests)
+        self._agent: Optional[ChatAgent] = None
 
-        # Add Azure OpenAI chat completion service
-        self.service_id = "chat"
-        self.kernel.add_service(
-            AzureChatCompletion(
-                service_id=self.service_id,
-                deployment_name=settings.azure_openai_deployment_name,
+    async def _get_agent(self) -> ChatAgent:
+        """Get or create the chat agent instance"""
+        if self._agent is None:
+            # Use AzureCli credential for authentication
+            credential = AzureCliCredential()
+
+            # Create Azure OpenAI chat client
+            chat_client = AzureOpenAIChatClient(
                 endpoint=settings.azure_openai_endpoint,
-                api_key=settings.azure_openai_api_key,
-                api_version=settings.azure_openai_api_version,
+                credential=credential,
+                deployment_name=settings.azure_openai_deployment_name,
             )
-        )
 
-    def get_or_create_history(self, user_id: str) -> ChatHistory:
-        """Get or create chat history for a user"""
-        if user_id not in self.user_histories:
-            history = ChatHistory()
-            # Add system message to set the assistant's behavior
-            history.add_system_message(
-                "You are a helpful AI assistant. Provide clear, accurate, and friendly responses."
+            self._agent = ChatAgent(
+                chat_client=chat_client,
+                instructions="You are a helpful AI assistant. Provide clear, accurate, and friendly responses.",
+                name="Assistant",
             )
-            self.user_histories[user_id] = history
 
-        return self.user_histories[user_id]
+        return self._agent
+
+    async def _get_or_create_thread(self, user_id: str):
+        """Get or create a thread for a user"""
+        agent = await self._get_agent()
+
+        if user_id in self.user_threads:
+            # Deserialize existing thread
+            thread = await agent.deserialize_thread(self.user_threads[user_id])
+        else:
+            # Create a new thread
+            thread = agent.get_new_thread()
+
+        return thread
+
+    async def _save_thread(self, user_id: str, thread):
+        """Serialize and save a thread for a user"""
+        serialized = await thread.serialize()
+        self.user_threads[user_id] = serialized
 
     async def chat(self, user_id: str, message: str) -> str:
         """Send a message and get a response"""
-        # Get user's chat history
-        history = self.get_or_create_history(user_id)
+        agent = await self._get_agent()
+        thread = await self._get_or_create_thread(user_id)
 
-        # Add user message to history
-        history.add_user_message(message)
+        # Run the agent with the thread to maintain conversation history
+        response = await agent.run(message, thread=thread)
+        response_text = response.text
 
-        # Get chat completion service
-        chat_service = self.kernel.get_service(service_id=self.service_id)
+        # Save the updated thread
+        await self._save_thread(user_id, thread)
 
-        # Get response from the model
-        response = await chat_service.get_chat_message_content(
-            chat_history=history,
-            settings=chat_service.instantiate_prompt_execution_settings(
-                service_id=self.service_id,
-                max_completion_tokens=1000,
-            ),
-        )
-
-        # Add assistant response to history
-        history.add_assistant_message(str(response))
-
-        return str(response)
+        return response_text
 
     async def chat_stream(
         self, user_id: str, message: str
     ) -> AsyncGenerator[str, None]:
         """Send a message and stream the response"""
-        # Get user's chat history
-        history = self.get_or_create_history(user_id)
+        agent = await self._get_agent()
+        thread = await self._get_or_create_thread(user_id)
 
-        # Add user message to history
-        history.add_user_message(message)
+        # Stream the agent's response with thread context
+        async for chunk in agent.run_stream(message, thread=thread):
+            if hasattr(chunk, "text") and chunk.text:
+                yield chunk.text
 
-        # Get chat completion service
-        chat_service = self.kernel.get_service(service_id=self.service_id)
+        # Save the updated thread
+        await self._save_thread(user_id, thread)
 
-        # Get streaming response from the model
-        full_response = ""
-        async for chunk in chat_service.get_streaming_chat_message_contents(
-            chat_history=history,
-            settings=chat_service.instantiate_prompt_execution_settings(
-                service_id=self.service_id,
-                max_completion_tokens=1000,
-            ),
-        ):
-            content = str(chunk[0]) if chunk else ""
-            if content:
-                full_response += content
-                yield content
-
-        # Add complete assistant response to history
-        history.add_assistant_message(full_response)
-
-    def get_history(self, user_id: str) -> list[ChatMessage]:
-        """Get chat history for a user"""
-        if user_id not in self.user_histories:
+    async def get_history(self, user_id: str) -> list[ChatMessage]:
+        """Get chat history for a user from their thread"""
+        if user_id not in self.user_threads:
             return []
 
-        history = self.user_histories[user_id]
+        thread = await self._get_or_create_thread(user_id)
+
         messages = []
 
-        for message in history.messages:
-            # Skip system messages in the returned history
-            if message.role.value != "system":
-                messages.append(
-                    ChatMessage(
-                        role=message.role.value,
-                        content=str(message.content),
-                        timestamp=datetime.utcnow(),
+        # Extract messages from the thread
+        if hasattr(thread, "messages"):
+            for msg in thread.messages:
+                # Skip system messages
+                if hasattr(msg, "role") and msg.role != "system":
+                    messages.append(
+                        ChatMessage(
+                            role=msg.role,
+                            content=str(msg.content)
+                            if hasattr(msg, "content")
+                            else str(msg),
+                            timestamp=datetime.utcnow(),
+                        )
                     )
-                )
 
         return messages
 
-    def clear_history(self, user_id: str) -> None:
+    async def clear_history(self, user_id: str) -> None:
         """Clear chat history for a user"""
-        if user_id in self.user_histories:
-            del self.user_histories[user_id]
+        if user_id in self.user_threads:
+            del self.user_threads[user_id]
 
 
 # Create a single instance

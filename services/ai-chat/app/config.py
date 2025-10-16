@@ -20,9 +20,7 @@ class Settings(BaseSettings):
 
     # Azure OpenAI settings
     azure_openai_endpoint: str = ""
-    azure_openai_api_key: str = ""
     azure_openai_deployment_name: str = "gpt-4o-mini"  # Default to GPT-4 mini
-    azure_openai_api_version: str = "2024-02-15-preview"
 
     model_config = SettingsConfigDict(
         env_file=".env",

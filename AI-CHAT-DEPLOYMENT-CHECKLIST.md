@@ -4,15 +4,14 @@
 
 - [ ] Azure OpenAI resource created
 - [ ] Model deployed in Azure OpenAI (e.g., GPT-4, GPT-3.5)
-- [ ] API key from Azure OpenAI
-- [ ] Endpoint URL from Azure OpenAI
+- [ ] Azure CLI installed and logged in (`az login`)
+- [ ] Appropriate RBAC role assigned (Cognitive Services OpenAI User)
 
 ## Configuration
 
 - [ ] Copy `.env.example` to `.env` in `services/ai-chat/`
 - [ ] Fill in Azure OpenAI details in `.env`:
   - `AZURE_OPENAI_ENDPOINT`
-  - `AZURE_OPENAI_API_KEY`
   - `AZURE_OPENAI_DEPLOYMENT_NAME`
 
 ## Infrastructure Deployment
