@@ -1,7 +1,7 @@
 from typing import Dict, AsyncGenerator, Optional
 from agent_framework import ChatAgent, MCPStdioTool
 from agent_framework.azure import AzureOpenAIChatClient
-from azure.identity import AzureCliCredential
+from azure.identity import DefaultAzureCredential
 from app.config import settings
 from app.models.chat import ChatMessage
 from datetime import datetime
@@ -44,8 +44,9 @@ class ChatService:
             # Get MCP tool first
             mcp_tool = await self._get_mcp_tool()
 
-            # Use AzureCli credential for authentication
-            credential = AzureCliCredential()
+            # Use DefaultAzureCredential for authentication
+            # This uses Managed Identity in Azure and falls back to Azure CLI locally
+            credential = DefaultAzureCredential()
 
             # Create Azure OpenAI chat client
             chat_client = AzureOpenAIChatClient(

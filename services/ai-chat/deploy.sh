@@ -57,12 +57,14 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     value="${value%\"}"
     value="${value#\"}"
     # Remove trailing whitespace/comments
-    value=$(echo "$value" | sed 's/[[:space:]]*#.*//')
-    # Add to env vars string
+    value=$(echo "$value" | sed 's/[[:space:]]*#.*//' | xargs)
+    # Skip if value is empty after processing
+    [[ -z "$value" ]] && continue
+    # Add to env vars string with proper escaping for spaces
     if [ -n "$ENV_VARS" ]; then
-      ENV_VARS="${ENV_VARS} ${key}=${value}"
+      ENV_VARS="${ENV_VARS} ${key}=\"${value}\""
     else
-      ENV_VARS="${key}=${value}"
+      ENV_VARS="${key}=\"${value}\""
     fi
   done < "$SCRIPT_DIR/.env"
 
@@ -75,12 +77,12 @@ fi
 
 echo "🔄 Updating Container App..."
 if [ -n "$ENV_VARS" ]; then
-  az containerapp update \
-    --name "$CONTAINER_APP_NAME" \
-    --resource-group "$RG_NAME" \
-    --image "$IMAGE_TAG" \
+  eval "az containerapp update \
+    --name \"$CONTAINER_APP_NAME\" \
+    --resource-group \"$RG_NAME\" \
+    --image \"$IMAGE_TAG\" \
     --set-env-vars $ENV_VARS \
-    --output none
+    --output none"
 else
   az containerapp update \
     --name "$CONTAINER_APP_NAME" \

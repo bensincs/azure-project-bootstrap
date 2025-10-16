@@ -143,6 +143,10 @@ resource "azurerm_container_app" "ai_chat_service" {
   revision_mode                = "Single"
   workload_profile_name        = "Consumption"
 
+  identity {
+    type = "SystemAssigned"
+  }
+
   registry {
     server               = azurerm_container_registry.core.login_server
     username             = azurerm_container_registry.core.admin_username
