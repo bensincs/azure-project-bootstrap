@@ -43,10 +43,10 @@ resource "azurerm_application_gateway" "core" {
     subnet_id = azurerm_subnet.app_gateway.id
   }
 
-  # SSL certificate from Key Vault
+  # SSL certificate from Bootstrap Key Vault
   ssl_certificate {
-    name                = "app-ssl-cert"
-    key_vault_secret_id = azurerm_key_vault_certificate.app_gateway.secret_id
+    name                = "app-gateway-ssl-cert"
+    key_vault_secret_id = var.app_gateway_ssl_certificate_id
   }
 
   # Frontend ports
@@ -161,7 +161,7 @@ resource "azurerm_application_gateway" "core" {
     frontend_ip_configuration_name = "public-frontend-ip-config"
     frontend_port_name             = "https-port"
     protocol                       = "Https"
-    ssl_certificate_name           = "app-ssl-cert"
+    ssl_certificate_name           = "app-gateway-ssl-cert"
   }
 
   # HTTP Listener
@@ -226,6 +226,6 @@ resource "azurerm_application_gateway" "core" {
     azurerm_container_app.api_service,
     azurerm_container_app.ui_service,
     azurerm_container_app.ai_chat_service,
-    azurerm_key_vault_certificate.app_gateway,
+    azurerm_key_vault_access_policy.app_gateway
   ]
 }

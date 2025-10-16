@@ -102,6 +102,148 @@ resource "azurerm_storage_container" "state" {
   container_access_type = "private"
 }
 
+# Key Vault for SSL certificates and secrets
+resource "azurerm_key_vault" "bootstrap" {
+  name                       = "kv-bootstrap-${random_string.suffix.result}"
+  resource_group_name        = azurerm_resource_group.state.name
+  location                   = azurerm_resource_group.state.location
+  tenant_id                  = data.azuread_client_config.current.tenant_id
+  sku_name                   = "standard"
+  soft_delete_retention_days = 7
+  purge_protection_enabled   = false
+
+  # Enable for Application Gateway
+  enabled_for_deployment          = true
+  enabled_for_disk_encryption     = true
+  enabled_for_template_deployment = true
+
+  public_network_access_enabled = true
+
+  network_acls {
+    bypass         = "AzureServices"
+    default_action = "Allow"
+  }
+
+  tags = local.mcaps_tags
+}
+
+# Access policy for current user/service principal
+resource "azurerm_key_vault_access_policy" "current_user" {
+  key_vault_id = azurerm_key_vault.bootstrap.id
+  tenant_id    = data.azuread_client_config.current.tenant_id
+  object_id    = data.azuread_client_config.current.object_id
+
+  certificate_permissions = [
+    "Get",
+    "List",
+    "Create",
+    "Import",
+    "Update",
+    "Delete",
+    "Purge",
+    "Recover",
+  ]
+
+  secret_permissions = [
+    "Get",
+    "List",
+    "Set",
+    "Delete",
+    "Purge",
+    "Recover",
+  ]
+
+  key_permissions = [
+    "Get",
+    "List",
+    "Create",
+    "Delete",
+    "Purge",
+    "Recover",
+  ]
+}
+
+# Access policy for GitHub Actions service principal
+resource "azurerm_key_vault_access_policy" "github_actions" {
+  key_vault_id = azurerm_key_vault.bootstrap.id
+  tenant_id    = data.azuread_client_config.current.tenant_id
+  object_id    = azuread_service_principal.github_actions.object_id
+
+  certificate_permissions = [
+    "Get",
+    "List",
+    "Import",
+  ]
+
+  secret_permissions = [
+    "Get",
+    "List",
+    "Set",
+  ]
+}
+
+# SSL certificate for Application Gateway
+# Note: Upload your certificate manually after bootstrap is deployed
+# Command: az keyvault certificate import --vault-name <vault-name> --name app-gateway-ssl-cert --file certificate.pfx --password <password>
+resource "azurerm_key_vault_certificate" "app_gateway" {
+  name         = "app-gateway-ssl-cert"
+  key_vault_id = azurerm_key_vault.bootstrap.id
+
+  # This will be replaced when you upload your actual certificate
+  certificate_policy {
+    issuer_parameters {
+      name = "Self"
+    }
+
+    key_properties {
+      exportable = true
+      key_size   = 2048
+      key_type   = "RSA"
+      reuse_key  = true
+    }
+
+    lifetime_action {
+      action {
+        action_type = "AutoRenew"
+      }
+
+      trigger {
+        days_before_expiry = 30
+      }
+    }
+
+    secret_properties {
+      content_type = "application/x-pkcs12"
+    }
+
+    x509_certificate_properties {
+      extended_key_usage = ["1.3.6.1.5.5.7.3.1"] # Server Authentication
+
+      key_usage = [
+        "cRLSign",
+        "dataEncipherment",
+        "digitalSignature",
+        "keyAgreement",
+        "keyCertSign",
+        "keyEncipherment",
+      ]
+
+      subject            = "CN=*.azurecontainerapps.io"
+      validity_in_months = 12
+
+      subject_alternative_names {
+        dns_names = [
+          "*.azurecontainerapps.io",
+        ]
+      }
+    }
+  }
+
+  depends_on = [
+    azurerm_key_vault_access_policy.current_user,
+  ]
+}
+
 # Data source to get current tenant ID
 data "azuread_client_config" "current" {}
 
@@ -209,6 +351,12 @@ resource "local_file" "tfvars" {
     location        = "${each.value.location}"
     subscription_id = "${each.value.subscription_id}"
 
+    # Bootstrap Key Vault (for SSL certificates)
+    key_vault_id                    = "${azurerm_key_vault.bootstrap.id}"
+    key_vault_name                  = "${azurerm_key_vault.bootstrap.name}"
+    key_vault_uri                   = "${azurerm_key_vault.bootstrap.vault_uri}"
+    app_gateway_ssl_certificate_id  = "${azurerm_key_vault_certificate.app_gateway.secret_id}"
+
     # Add your custom variables below this line
     # Example:
     # resource_name_prefix = "${each.value.environment}"
@@ -262,4 +410,24 @@ output "github_actions_identity" {
     object_id       = azuread_service_principal.github_actions.object_id
   }
   sensitive = false
+}
+
+output "key_vault_name" {
+  description = "Bootstrap Key Vault name for SSL certificates"
+  value       = azurerm_key_vault.bootstrap.name
+}
+
+output "key_vault_id" {
+  description = "Bootstrap Key Vault resource ID"
+  value       = azurerm_key_vault.bootstrap.id
+}
+
+output "key_vault_uri" {
+  description = "Bootstrap Key Vault URI"
+  value       = azurerm_key_vault.bootstrap.vault_uri
+}
+
+output "app_gateway_ssl_certificate_id" {
+  description = "Application Gateway SSL certificate secret ID"
+  value       = azurerm_key_vault_certificate.app_gateway.secret_id
 }

@@ -70,4 +70,69 @@ gh secret list
 
 # Check Azure resources
 az group show --name rg-terraform-state
+
+# Check Key Vault and certificate
+terraform output key_vault_name
+az keyvault certificate show \
+  --vault-name $(terraform output -raw key_vault_name) \
+  --name app-gateway-ssl-cert
 ```
+
+## SSL Certificate Management
+
+### Default Certificate
+The bootstrap creates a self-signed certificate for development. **Replace this with a real certificate for production**.
+
+### Upload Your Own Certificate
+
+```bash
+# Get Key Vault name
+KEY_VAULT_NAME=$(terraform output -raw key_vault_name)
+
+# Upload your certificate
+az keyvault certificate import \
+  --vault-name $KEY_VAULT_NAME \
+  --name app-gateway-ssl-cert \
+  --file /path/to/certificate.pfx \
+  --password "YourCertPassword"
+```
+
+See `../SSL-CERTIFICATE.md` for detailed certificate management instructions.
+
+## Bootstrap Outputs
+
+The bootstrap automatically updates `infra/core/vars/dev.tfvars` with:
+- `key_vault_id` - Bootstrap Key Vault resource ID
+- `key_vault_name` - Bootstrap Key Vault name
+- `key_vault_uri` - Bootstrap Key Vault URI
+- `app_gateway_ssl_certificate_id` - SSL certificate secret ID
+
+These values are used by the core infrastructure to access certificates.
+
+## Updating Bootstrap
+
+If you need to make changes to the bootstrap:
+
+```bash
+cd infra/bootstrap
+terraform apply \
+  -var="subscription_id=YOUR_SUBSCRIPTION_ID" \
+  -var="github_repository=owner/repo-name"
+```
+
+Changes to Key Vault or certificates will automatically update the tfvars file.
+
+## Troubleshooting
+
+### Certificate Issues
+If Application Gateway can't access the certificate:
+1. Verify the certificate exists in Bootstrap Key Vault
+2. Check access policy for Application Gateway managed identity
+3. Ensure certificate name is exactly `app-gateway-ssl-cert`
+
+### State File Issues
+If you need to move or recreate state storage:
+1. Export existing state: `terraform state pull > backup.tfstate`
+2. Update backend configuration
+3. Re-initialize: `terraform init -reconfigure`
+4. Import state if needed

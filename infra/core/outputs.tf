@@ -38,6 +38,17 @@ output "container_registry_login_server" {
   value       = azurerm_container_registry.core.login_server
 }
 
+# Bootstrap Key Vault (passed through from variables)
+output "key_vault_name" {
+  description = "Name of the Bootstrap Key Vault"
+  value       = var.key_vault_name
+}
+
+output "key_vault_uri" {
+  description = "URI of the Bootstrap Key Vault"
+  value       = var.key_vault_uri
+}
+
 # API Service Outputs
 output "api_service_name" {
   description = "Name of the API Container App"
@@ -69,27 +80,6 @@ output "app_gateway_name" {
   description = "Name of the Application Gateway"
   value       = azurerm_application_gateway.core.name
 }
-
-# Azure Front Door Outputs (commented out - replaced with Application Gateway)
-# output "frontdoor_endpoint_hostname" {
-#   description = "Azure Front Door endpoint hostname"
-#   value       = azurerm_cdn_frontdoor_endpoint.core.host_name
-# }
-
-# output "frontdoor_endpoint_url" {
-#   description = "Full URL to access the application via Azure Front Door"
-#   value       = "https://${azurerm_cdn_frontdoor_endpoint.core.host_name}"
-# }
-
-# output "frontdoor_profile_name" {
-#   description = "Name of the Azure Front Door profile"
-#   value       = azurerm_cdn_frontdoor_profile.core.name
-# }
-
-# output "frontdoor_endpoint_name" {
-#   description = "Name of the Azure Front Door endpoint"
-#   value       = azurerm_cdn_frontdoor_endpoint.core.name
-# }
 
 # VPN Gateway Outputs
 output "vpn_gateway_name" {
