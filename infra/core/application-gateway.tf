@@ -110,7 +110,7 @@ resource "azurerm_application_gateway" "core" {
     cookie_based_affinity = "Disabled"
     port                  = 443
     protocol              = "Https"
-    request_timeout       = 120  # Increased timeout for streaming
+    request_timeout       = 120 # Increased timeout for streaming
     probe_name            = "ai-chat-health-probe"
     host_name             = azurerm_container_app.ai_chat_service.ingress[0].fqdn
   }

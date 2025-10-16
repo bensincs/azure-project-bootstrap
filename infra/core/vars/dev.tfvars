@@ -13,5 +13,4 @@ subscription_id = "dd78ec54-2f00-41fc-8055-8c1f2ad66a1d"
 #   ManagedBy   = "Terraform"
 # }
 
-apim_publisher_email = "ben@sincs.co.uk"
-enable_vpn_gateway   = true
+enable_vpn_gateway = true

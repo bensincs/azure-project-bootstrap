@@ -93,6 +93,12 @@ export default function Landing() {
                   "High-performance Go API hosted in Azure Container Apps with JWT authentication and WebSocket support.",
               },
               {
+                icon: "🤖",
+                title: "AI Chat Assistant",
+                description:
+                  "Streaming AI chat powered by Azure OpenAI and Semantic Kernel. Real-time responses with character-by-character typing animation.",
+              },
+              {
                 icon: "�",
                 title: "Realtime Events",
                 description:
