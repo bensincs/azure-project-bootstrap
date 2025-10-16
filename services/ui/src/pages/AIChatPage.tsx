@@ -17,6 +17,9 @@ export default function AIChatPage() {
   const [loading, setLoading] = useState(false);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const typingIntervalRef = useRef<number | null>(null);
+  const fullContentRef = useRef<string>("");
+  const currentIndexRef = useRef<number>(0);
 
   const aiChatUrl = import.meta.env.VITE_AI_CHAT_URL;
 
@@ -39,6 +42,15 @@ export default function AIChatPage() {
   // Load chat history on mount
   useEffect(() => {
     loadHistory();
+  }, []);
+
+  // Cleanup typing animation on unmount
+  useEffect(() => {
+    return () => {
+      if (typingIntervalRef.current !== null) {
+        clearInterval(typingIntervalRef.current);
+      }
+    };
   }, []);
 
   const loadHistory = async () => {
@@ -71,6 +83,12 @@ export default function AIChatPage() {
     setInputMessage("");
     setLoading(true);
 
+    // Clear any previous typing animation
+    if (typingIntervalRef.current !== null) {
+      clearInterval(typingIntervalRef.current);
+      typingIntervalRef.current = null;
+    }
+
     // Add user message to UI immediately
     const newUserMessage: ChatMessage = {
       role: "user",
@@ -79,8 +97,46 @@ export default function AIChatPage() {
     };
     setMessages((prev) => [...prev, newUserMessage]);
 
+    // Create placeholder for assistant message
+    const assistantMessageIndex = messages.length + 1;
+    const assistantMessage: ChatMessage = {
+      role: "assistant",
+      content: "",
+      timestamp: new Date().toISOString(),
+    };
+    setMessages((prev) => [...prev, assistantMessage]);
+
+    // Reset refs for typing animation
+    fullContentRef.current = "";
+    currentIndexRef.current = 0;
+
+    // Start typing animation
+    const startTyping = () => {
+      typingIntervalRef.current = window.setInterval(() => {
+        if (currentIndexRef.current < fullContentRef.current.length) {
+          currentIndexRef.current += 1;
+
+          setMessages((prev) => {
+            const newMessages = [...prev];
+            if (newMessages[assistantMessageIndex]) {
+              newMessages[assistantMessageIndex] = {
+                ...newMessages[assistantMessageIndex],
+                content: fullContentRef.current.substring(
+                  0,
+                  currentIndexRef.current
+                ),
+              };
+            }
+            return newMessages;
+          });
+        }
+      }, 15); // 30ms per character for smooth typing effect
+    };
+
+    startTyping();
+
     try {
-      const response = await fetch(`${aiChatUrl}/chat`, {
+      const response = await fetch(`${aiChatUrl}/chat/stream`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -89,28 +145,70 @@ export default function AIChatPage() {
         body: JSON.stringify({ message: userMessage }),
       });
 
-      if (response.ok) {
-        const data = await response.json();
-        const assistantMessage: ChatMessage = {
-          role: "assistant",
-          content: data.message,
-          timestamp: data.timestamp,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-      } else {
+      if (!response.ok) {
         throw new Error("Failed to send message");
       }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No reader available");
+      }
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (line.startsWith("data: ")) {
+            const data = line.slice(6);
+            try {
+              const parsed = JSON.parse(data);
+              if (parsed.done) {
+                break;
+              }
+              if (parsed.content) {
+                // Add to full content buffer for typing animation
+                fullContentRef.current += parsed.content;
+              }
+            } catch (e) {
+              // Ignore parsing errors for incomplete chunks
+            }
+          }
+        }
+      }
+
+      // Wait for typing to finish
+      const waitForTyping = setInterval(() => {
+        if (currentIndexRef.current >= fullContentRef.current.length) {
+          clearInterval(waitForTyping);
+          if (typingIntervalRef.current !== null) {
+            clearInterval(typingIntervalRef.current);
+            typingIntervalRef.current = null;
+          }
+        }
+      }, 100);
     } catch (error) {
       console.error("Error sending message:", error);
-      // Add error message
-      setMessages((prev) => [
-        ...prev,
-        {
+      // Clear typing animation
+      if (typingIntervalRef.current !== null) {
+        clearInterval(typingIntervalRef.current);
+        typingIntervalRef.current = null;
+      }
+      // Update the placeholder with error message
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[assistantMessageIndex] = {
           role: "assistant",
           content: "Sorry, I encountered an error. Please try again.",
           timestamp: new Date().toISOString(),
-        },
-      ]);
+        };
+        return newMessages;
+      });
     } finally {
       setLoading(false);
     }
@@ -223,6 +321,11 @@ export default function AIChatPage() {
                     <div className="flex-1">
                       <p className="whitespace-pre-wrap break-words">
                         {message.content}
+                        {message.role === "assistant" &&
+                          loading &&
+                          index === messages.length - 1 && (
+                            <span className="inline-block w-2 h-4 ml-1 bg-white animate-pulse" />
+                          )}
                       </p>
                       <p className="text-xs mt-2 opacity-60">
                         {new Date(message.timestamp).toLocaleTimeString()}
@@ -232,20 +335,6 @@ export default function AIChatPage() {
                 </div>
               </div>
             ))
-          )}
-          {loading && (
-            <div className="flex justify-start">
-              <div className="bg-white/10 text-white border border-white/20 rounded-2xl p-4">
-                <div className="flex items-center gap-3">
-                  <div className="text-2xl">🤖</div>
-                  <div className="flex gap-1">
-                    <span className="animate-bounce">●</span>
-                    <span className="animate-bounce delay-100">●</span>
-                    <span className="animate-bounce delay-200">●</span>
-                  </div>
-                </div>
-              </div>
-            </div>
           )}
           <div ref={messagesEndRef} />
         </div>

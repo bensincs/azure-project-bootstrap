@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, AsyncGenerator
 from semantic_kernel import Kernel
 from semantic_kernel.connectors.ai.open_ai import AzureChatCompletion
 from semantic_kernel.contents import ChatHistory
@@ -65,6 +65,36 @@ class ChatService:
         history.add_assistant_message(str(response))
 
         return str(response)
+
+    async def chat_stream(
+        self, user_id: str, message: str
+    ) -> AsyncGenerator[str, None]:
+        """Send a message and stream the response"""
+        # Get user's chat history
+        history = self.get_or_create_history(user_id)
+
+        # Add user message to history
+        history.add_user_message(message)
+
+        # Get chat completion service
+        chat_service = self.kernel.get_service(service_id=self.service_id)
+
+        # Get streaming response from the model
+        full_response = ""
+        async for chunk in chat_service.get_streaming_chat_message_contents(
+            chat_history=history,
+            settings=chat_service.instantiate_prompt_execution_settings(
+                service_id=self.service_id,
+                max_completion_tokens=1000,
+            ),
+        ):
+            content = str(chunk[0]) if chunk else ""
+            if content:
+                full_response += content
+                yield content
+
+        # Add complete assistant response to history
+        history.add_assistant_message(full_response)
 
     def get_history(self, user_id: str) -> list[ChatMessage]:
         """Get chat history for a user"""
