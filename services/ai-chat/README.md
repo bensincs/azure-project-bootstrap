@@ -1,12 +1,16 @@
 # AI Chat Service
 
-A simple FastAPI service for AI chat functionality, managed with `uv`.
+A FastAPI service for AI chat functionality using Semantic Kernel and Azure OpenAI, managed with `uv`.
 
 ## Features
 
 - 🚀 FastAPI framework
+- 🤖 Semantic Kernel for AI chat agent
+- 💬 GPT-4 mini (gpt-4o-mini) for chat responses
 - 📦 Dependency management with `uv`
-- 🐳 Docker containerization
+- 🔐 Azure AD JWT authentication
+- � In-memory chat history per user
+- �🐳 Docker containerization
 - ☁️ Azure Container Apps deployment
 - 🏥 Health check endpoint
 
@@ -45,6 +49,55 @@ A simple FastAPI service for AI chat functionality, managed with `uv`.
 }
 ```
 
+### Send Chat Message
+- **URL**: `/ai-chat/chat`
+- **Method**: POST
+- **Authentication**: Required (Azure AD JWT Bearer token)
+- **Request Body**:
+```json
+{
+  "message": "Hello, how are you?"
+}
+```
+- **Response**:
+```json
+{
+  "message": "I'm doing well, thank you! How can I assist you today?",
+  "timestamp": "2025-10-16T12:00:00"
+}
+```
+
+### Get Chat History
+- **URL**: `/ai-chat/chat/history`
+- **Method**: GET
+- **Authentication**: Required (Azure AD JWT Bearer token)
+- **Response**:
+```json
+[
+  {
+    "role": "user",
+    "content": "Hello, how are you?",
+    "timestamp": "2025-10-16T12:00:00"
+  },
+  {
+    "role": "assistant",
+    "content": "I'm doing well, thank you! How can I assist you today?",
+    "timestamp": "2025-10-16T12:00:01"
+  }
+]
+```
+
+### Clear Chat History
+- **URL**: `/ai-chat/chat/history`
+- **Method**: DELETE
+- **Authentication**: Required (Azure AD JWT Bearer token)
+- **Response**:
+```json
+{
+  "message": "Chat history cleared"
+}
+```
+
 ## Local Development
 
 ### Prerequisites
@@ -53,6 +106,7 @@ A simple FastAPI service for AI chat functionality, managed with `uv`.
 - [uv](https://github.com/astral-sh/uv) package manager
 - Docker (for containerization)
 - Azure AD tenant (for JWT authentication)
+- Azure OpenAI resource with GPT-4 mini deployment
 
 ### Setup
 
@@ -70,12 +124,14 @@ uv pip install -r pyproject.toml
 3. **Configure environment variables**:
 ```bash
 cp .env.example .env
-# Edit .env with your Azure AD tenant ID and client ID
+# Edit .env with your settings:
+# - Azure AD tenant ID and client ID
+# - Azure OpenAI endpoint, API key, and deployment name
 ```
 
 4. **Run the service**:
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uv run python -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 5. **Test the health endpoint** (no auth required):
@@ -83,12 +139,43 @@ uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 curl http://localhost:8000/ai-chat/health
 ```
 
-6. **Test the authenticated endpoint** (requires JWT token):
+6. **Test the chat endpoint** (requires JWT token):
 ```bash
 # Get a token from your Azure AD app
 TOKEN="your-jwt-token-here"
-curl -H "Authorization: Bearer $TOKEN" http://localhost:8000/ai-chat/user/me
+
+# Send a chat message
+curl -X POST http://localhost:8000/ai-chat/chat \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"message": "Hello!"}'
+
+# Get chat history
+curl http://localhost:8000/ai-chat/chat/history \
+  -H "Authorization: Bearer $TOKEN"
 ```
+
+## Chat Features
+
+### Semantic Kernel Integration
+
+The service uses Microsoft's Semantic Kernel to:
+- Manage conversation context and history
+- Interface with Azure OpenAI GPT-4 mini
+- Provide a simple, extensible AI agent architecture
+
+### Per-User Chat History
+
+- Each authenticated user has their own chat history
+- History is maintained in-memory (resets on service restart)
+- System message sets the assistant's behavior
+- All user messages and assistant responses are tracked
+
+### GPT-4 Mini Configuration
+
+- **Model**: gpt-4o-mini (cost-effective, fast responses)
+- **Max Tokens**: 1000
+- **Temperature**: 0.7 (balanced creativity and consistency)
 
 ## Authentication
 
@@ -195,7 +282,7 @@ AZURE_CLIENT_ID=your-client-id-here
 SKIP_TOKEN_VERIFICATION=false  # Set to true ONLY for development/testing
 ```
 
-**Important**: 
+**Important**:
 - Set `AZURE_TENANT_ID` and `AZURE_CLIENT_ID` to your Azure AD values
 - The `SKIP_TOKEN_VERIFICATION` flag should ONLY be set to `true` for local development
 - Never use `SKIP_TOKEN_VERIFICATION=true` in production environments

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import AnimatedBackground from "../components/AnimatedBackground";
 import { useAuth } from "../hooks/useAuth";
 import { useEvents, type ChatEvent, type UserEvent } from "../hooks/useEvents";
@@ -29,6 +30,7 @@ interface ChatMessage {
 
 export default function AppPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { connectionStatus, subscribe } = useEvents();
   const [activeUsers, setActiveUsers] = useState<ActiveUser[]>([]);
   const [selectedUser, setSelectedUser] = useState<ActiveUser | null>(null);
@@ -37,6 +39,13 @@ export default function AppPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
 
   const apiUrl = import.meta.env.VITE_API_URL || "http://localhost:8080/api";
+
+  // Redirect to landing if not authenticated
+  useEffect(() => {
+    if (!user) {
+      navigate("/");
+    }
+  }, [user, navigate]);
 
   // Fetch active users
   const fetchActiveUsers = async () => {
@@ -165,49 +174,46 @@ export default function AppPage() {
                 Direct Messages
               </h1>
             </div>
-            <p className="max-w-sm text-sm text-slate-400">
-              Send messages to connected users in real-time via WebSocket
-            </p>
           </div>
 
-          {/* Login & Connection Status */}
+          {/* Connection Status */}
           <div className="rounded-2xl border border-white/10 bg-black/40 p-4 backdrop-blur">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-slate-500">
-                    {user ? "Connected as" : "Authentication"}
+                    Connected as
                   </p>
-                  {user ? (
-                    <p className="mt-1 text-sm text-white">
-                      <span className="font-semibold">
-                        {user.profile.name || user.profile.email}
-                      </span>
-                    </p>
-                  ) : (
-                    <p className="mt-1 text-sm text-slate-400">
-                      Sign in to start chatting
-                    </p>
-                  )}
-                </div>
-                {user && (
-                  <div className="flex items-center gap-2">
-                    <div
-                      className={`h-2 w-2 rounded-full ${
-                        connectionStatus === "connected"
-                          ? "bg-emerald-400"
-                          : connectionStatus === "connecting"
-                          ? "bg-yellow-400 animate-pulse"
-                          : "bg-slate-500"
-                      }`}
-                    />
-                    <span className="text-xs text-slate-400">
-                      {connectionStatus}
+                  <p className="mt-1 text-sm text-white">
+                    <span className="font-semibold">
+                      {user?.profile.name || user?.profile.email}
                     </span>
-                  </div>
-                )}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div
+                    className={`h-2 w-2 rounded-full ${
+                      connectionStatus === "connected"
+                        ? "bg-emerald-400"
+                        : connectionStatus === "connecting"
+                        ? "bg-yellow-400 animate-pulse"
+                        : "bg-slate-500"
+                    }`}
+                  />
+                  <span className="text-xs text-slate-400">
+                    {connectionStatus}
+                  </span>
+                </div>
               </div>
-              <LoginButton />
+              <div className="flex items-center gap-3">
+                <Link
+                  to="/"
+                  className="text-sm text-slate-400 hover:text-white transition-colors"
+                >
+                  ← Home
+                </Link>
+                <LoginButton />
+              </div>
             </div>
           </div>
         </header>
@@ -215,9 +221,7 @@ export default function AppPage() {
         {!user ? (
           <main className="mx-auto mt-12 w-full max-w-6xl">
             <div className="rounded-3xl border border-white/10 bg-black/40 p-12 text-center shadow-neon backdrop-blur">
-              <p className="text-lg text-slate-300">
-                🔒 Please sign in to start using the chat
-              </p>
+              <p className="text-lg text-slate-300">Redirecting to login...</p>
             </div>
           </main>
         ) : (

@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
 import AnimatedBackground from "../components/AnimatedBackground";
+import { LoginButton } from "../components/LoginButton";
+import { useAuth } from "../hooks/useAuth";
 
 export default function Landing() {
+  const { user } = useAuth();
+
   return (
     <>
       <AnimatedBackground />
@@ -21,6 +25,11 @@ export default function Landing() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            {user && (
+              <div className="text-sm text-white">
+                Welcome, {user.profile.name || user.profile.email}
+              </div>
+            )}
             <a
               href="https://github.com/bensincs/azure-project-bootstrap"
               target="_blank"
@@ -30,6 +39,7 @@ export default function Landing() {
               <span>View Repository</span>
               <span aria-hidden>↗</span>
             </a>
+            <LoginButton />
           </div>
         </header>
 
@@ -43,15 +53,29 @@ export default function Landing() {
               messaging, plus product IaC alongside separate bootstrap Terraform
               to wire GitHub identities, secrets, and subscriptions.
             </p>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <Link to="/app" className="ui-button-plain">
-                Open Chat
-              </Link>
-              <p className="text-sm text-slate-400">
-                Explore the deployed sample UI backed by the same services
-                shipped in this repo.
-              </p>
-            </div>
+            {user ? (
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                <Link to="/app" className="ui-button-plain">
+                  Open Chat
+                </Link>
+                <Link to="/ai-chat" className="ui-button-plain">
+                  AI Assistant
+                </Link>
+                <p className="text-sm text-slate-400">
+                  Explore the deployed sample UI backed by the same services
+                  shipped in this repo.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                <div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur p-6">
+                  <p className="text-white mb-4">
+                    🔒 Please sign in to access the additional features
+                  </p>
+                  <LoginButton />
+                </div>
+              </div>
+            )}
           </section>
 
           <section className="grid gap-6 sm:grid-cols-2">

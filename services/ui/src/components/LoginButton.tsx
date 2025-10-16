@@ -18,7 +18,6 @@ export const LoginButton = () => {
   if (user) {
     return (
       <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        <span>Hello, {user.profile.name || user.profile.email}</span>
         <button onClick={handleLogout}>Logout</button>
       </div>
     );

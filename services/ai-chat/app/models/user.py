@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class User(BaseModel):
     """User model representing an authenticated user from Azure AD JWT"""
+
     id: str  # Object ID (oid claim)
     email: str  # Email address
     name: str  # Display name
@@ -18,6 +19,7 @@ class User(BaseModel):
 
 class UserClaims(BaseModel):
     """JWT claims from Azure AD token"""
+
     oid: str  # Object ID
     email: Optional[str] = None
     preferred_username: Optional[str] = None
@@ -29,7 +31,7 @@ class UserClaims(BaseModel):
     iss: str  # Issuer
     iat: int  # Issued at (unix timestamp)
     exp: int  # Expiration time (unix timestamp)
-    
+
     def to_user(self) -> User:
         """Convert UserClaims to User model"""
         return User(
@@ -41,5 +43,5 @@ class UserClaims(BaseModel):
             roles=self.roles,
             groups=self.groups,
             issued_at=datetime.fromtimestamp(self.iat),
-            expires_at=datetime.fromtimestamp(self.exp)
+            expires_at=datetime.fromtimestamp(self.exp),
         )

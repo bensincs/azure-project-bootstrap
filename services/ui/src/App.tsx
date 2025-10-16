@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Landing from "./pages/Landing";
 import AppPage from "./pages/AppPage";
+import AIChatPage from "./pages/AIChatPage";
 import { AuthCallback } from "./pages/AuthCallback";
 import { EventsProvider } from "./hooks/useEvents";
 
@@ -11,6 +12,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/app" element={<AppPage />} />
+          <Route path="/ai-chat" element={<AIChatPage />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
         </Routes>
       </EventsProvider>
