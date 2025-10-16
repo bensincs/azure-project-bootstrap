@@ -47,39 +47,44 @@ docker push "$IMAGE_NAME"
 docker push "$IMAGE_TAG"
 
 echo "📝 Reading environment variables from .env file..."
-ENV_VARS=""
+ENV_VARS=()
 if [ -f "$SCRIPT_DIR/.env" ]; then
   # Read .env file and convert to --set-env-vars format
-  while IFS='=' read -r key value; do
+  while IFS= read -r line; do
     # Skip empty lines and comments
-    [[ -z "$key" || "$key" =~ ^#.*$ ]] && continue
-    # Remove quotes from value if present
-    value="${value%\"}"
-    value="${value#\"}"
-    # Remove trailing whitespace/comments
-    value=$(echo "$value" | sed 's/[[:space:]]*#.*//')
-    # Add to env vars string
-    if [ -n "$ENV_VARS" ]; then
-      ENV_VARS="${ENV_VARS} ${key}=${value}"
-    else
-      ENV_VARS="${key}=${value}"
+    [[ -z "$line" || "$line" =~ ^[[:space:]]*#.*$ ]] && continue
+    
+    # Extract key and value
+    if [[ "$line" =~ ^([A-Z_][A-Z0-9_]*)=(.*)$ ]]; then
+      key="${BASH_REMATCH[1]}"
+      value="${BASH_REMATCH[2]}"
+      
+      # Remove quotes from value if present
+      value="${value%\"}"
+      value="${value#\"}"
+      
+      # Remove trailing whitespace and comments
+      value=$(echo "$value" | sed 's/[[:space:]]*#.*//' | sed 's/[[:space:]]*$//')
+      
+      # Add to env vars array
+      ENV_VARS+=("${key}=${value}")
     fi
   done < "$SCRIPT_DIR/.env"
 
   echo "✅ Loaded environment variables from .env"
-  echo "   Variables: $(echo "$ENV_VARS" | grep -o '[A-Z_]*=' | tr '\n' ' ')"
+  echo "   Variables: $(printf '%s\n' "${ENV_VARS[@]}" | grep -o '^[A-Z_]*=' | tr '\n' ' ')"
 else
   echo "⚠️  No .env file found at $SCRIPT_DIR/.env"
   echo "   Container App will use existing environment variables"
 fi
 
 echo "🔄 Updating Container App..."
-if [ -n "$ENV_VARS" ]; then
+if [ ${#ENV_VARS[@]} -gt 0 ]; then
   az containerapp update \
     --name "$CONTAINER_APP_NAME" \
     --resource-group "$RG_NAME" \
     --image "$IMAGE_TAG" \
-    --set-env-vars $ENV_VARS \
+    --set-env-vars "${ENV_VARS[@]}" \
     --output none
 else
   az containerapp update \
