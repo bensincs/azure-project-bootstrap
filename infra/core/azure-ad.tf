@@ -25,7 +25,7 @@ resource "azuread_application" "main" {
       var.custom_domain != "" ? [
         "https://${var.custom_domain}/",
         "https://${var.custom_domain}/auth/callback",
-      ] : [
+        ] : [
         "https://${azurerm_public_ip.app_gateway.ip_address}/",
         "https://${azurerm_public_ip.app_gateway.ip_address}/auth/callback",
       ],
