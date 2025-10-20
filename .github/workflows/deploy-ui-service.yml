@@ -21,6 +21,10 @@ permissions:
   id-token: write
   contents: read
 
+concurrency:
+  group: azure-services-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
 jobs:
   deploy-ui:
     name: "Deploy UI Service"

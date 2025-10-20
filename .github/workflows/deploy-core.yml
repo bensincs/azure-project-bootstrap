@@ -28,6 +28,10 @@ permissions:
   contents: write
   pull-requests: write
 
+concurrency:
+  group: azure-services-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
 jobs:
   terraform:
     name: "Terraform Plan & Apply"
