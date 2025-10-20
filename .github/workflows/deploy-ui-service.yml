@@ -77,6 +77,12 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
+      - name: Generate Environment File
+        working-directory: services/ui
+        run: |
+          chmod +x ./env.sh
+          ./env.sh
+
       - name: Deploy UI Service
         working-directory: services/ui
         env:

@@ -1,12 +1,15 @@
 #!/bin/bash
 set -e
 
+ENVIRONMENT="${1:-dev}"
+
 echo "🎨 Building and deploying UI..."
+echo "📋 Environment: $ENVIRONMENT"
 
 # Get infrastructure outputs from Terraform
 cd ../../infra/core
 CONTAINER_REGISTRY=$(terraform output -raw container_registry_login_server)
-CONTAINER_APP_NAME="ca-core-ui-service-dev"
+CONTAINER_APP_NAME="ca-core-ui-service-$ENVIRONMENT"
 RESOURCE_GROUP=$(terraform output -raw resource_group_name)
 cd ../../services/ui
 
@@ -35,7 +38,7 @@ docker push "$IMAGE_NAME:latest"
 echo ""
 echo "🚀 Updating Container App..."
 
-# Load environment variables from local .env if it exists
+# Load environment variables from .env if it exists
 ENV_VARS_ARG=""
 if [ -f ".env" ]; then
   echo "📝 Loading environment variables from .env..."
