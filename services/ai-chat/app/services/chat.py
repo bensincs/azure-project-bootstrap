@@ -1,5 +1,5 @@
 from typing import Dict, AsyncGenerator, Optional
-from agent_framework import ChatAgent, MCPStdioTool
+from agent_framework import ChatAgent
 from agent_framework.azure import AzureOpenAIChatClient
 from azure.identity import DefaultAzureCredential, get_bearer_token_provider
 from app.config import settings
@@ -8,21 +8,19 @@ from datetime import datetime
 
 
 class ChatService:
-    """Service for managing chat conversations using Microsoft Agent Framework with threads and MCP tools"""
+    """Service for managing chat conversations using Microsoft Agent Framework with threads"""
 
     def __init__(self):
         # Store serialized thread data per user (in-memory for simplicity)
         # In production, this should be stored in a database
         self.user_threads: Dict[str, dict] = {}
 
-        # Store agent and MCP tool instances (reused across requests)
+        # Store agent
         self._agent: Optional[ChatAgent] = None
 
     async def _get_agent(self) -> ChatAgent:
         """Get or create the chat agent instance"""
         if self._agent is None:
-            # Get MCP tool first
-
             # Use DefaultAzureCredential for authentication
             # This uses Managed Identity in Azure and falls back to Azure CLI locally
             credential = DefaultAzureCredential()
@@ -135,10 +133,8 @@ class ChatService:
             del self.user_threads[user_id]
 
     async def cleanup(self):
-        """Cleanup resources including MCP tool connection"""
-        if self._mcp_tool is not None:
-            await self._mcp_tool.__aexit__(None, None, None)
-            self._mcp_tool = None
+        """Cleanup resources"""
+        pass
 
 
 # Create a single instance
