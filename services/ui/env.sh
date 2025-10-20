@@ -31,20 +31,22 @@ if [ ! -d ".terraform" ]; then
 fi
 
 # Get required outputs
-AZURE_CLIENT_ID=$(terraform output -raw azure_ad_client_id 2>/dev/null || echo "")
+AZURE_CLIENT_ID=$(terraform output -raw azure_ad_application_id 2>/dev/null || echo "")
 AZURE_TENANT_ID=$(terraform output -raw azure_ad_tenant_id 2>/dev/null || echo "")
 
 cd ../../services/ui
 
 # Validate outputs
 if [ -z "$AZURE_CLIENT_ID" ]; then
-    echo "⚠️  Warning: azure_ad_client_id not found in Terraform outputs"
-    AZURE_CLIENT_ID="your-client-id-here"
+    echo "❌ Error: azure_ad_application_id not found in Terraform outputs"
+    echo "   Make sure Terraform has been applied and outputs are available"
+    exit 1
 fi
 
 if [ -z "$AZURE_TENANT_ID" ]; then
-    echo "⚠️  Warning: azure_ad_tenant_id not found in Terraform outputs"
-    AZURE_TENANT_ID="your-tenant-id-here"
+    echo "❌ Error: azure_ad_tenant_id not found in Terraform outputs"
+    echo "   Make sure Terraform has been applied and outputs are available"
+    exit 1
 fi
 
 # Generate .env file
