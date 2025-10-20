@@ -78,12 +78,29 @@ DNS_RESOLVER=$(grep "dhcp-option DNS" /tmp/vpn-connection.log 2>/dev/null | sed 
 
 if [ -n "$DNS_RESOLVER" ]; then
     echo -e "  ${GREEN}✓${NC} VPN DNS Server: $DNS_RESOLVER"
-
-    # Check if DNS is configured in resolv.conf
-    if grep -q "$DNS_RESOLVER" /etc/resolv.conf 2>/dev/null; then
-        echo -e "  ${GREEN}✓${NC} DNS auto-configured in /etc/resolv.conf"
+    
+    # Check if systemd-resolved is running
+    if systemctl is-active --quiet systemd-resolved 2>/dev/null || [ -L /etc/resolv.conf ] && readlink /etc/resolv.conf | grep -q "systemd"; then
+        echo -e "  ${BLUE}ℹ${NC} Using systemd-resolved"
+        
+        # Get VPN interface
+        VPN_IFACE=$(ip -4 addr show | grep "inet 172.16.0" | awk '{print $NF}' | head -1)
+        
+        # Check if DNS is configured for the VPN interface
+        if command -v resolvectl &> /dev/null; then
+            if resolvectl status "$VPN_IFACE" 2>/dev/null | grep -q "$DNS_RESOLVER"; then
+                echo -e "  ${GREEN}✓${NC} DNS configured via systemd-resolved for $VPN_IFACE"
+            else
+                echo -e "  ${YELLOW}⚠${NC} DNS not configured for $VPN_IFACE in systemd-resolved"
+            fi
+        fi
     else
-        echo -e "  ${YELLOW}⚠${NC} DNS not configured in /etc/resolv.conf"
+        # Direct resolv.conf check (dev containers)
+        if grep -q "$DNS_RESOLVER" /etc/resolv.conf 2>/dev/null; then
+            echo -e "  ${GREEN}✓${NC} DNS configured in /etc/resolv.conf"
+        else
+            echo -e "  ${YELLOW}⚠${NC} DNS not configured in /etc/resolv.conf"
+        fi
     fi
 else
     echo -e "  ${YELLOW}⚠${NC} No DNS resolver found in VPN configuration"
