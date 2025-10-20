@@ -62,7 +62,9 @@ if [ -f /tmp/vpn-connection.pid ]; then
     # Use custom DNS updater to restore original DNS
     SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
     if [ -f "$SCRIPT_DIR/vpn-dns-update.sh" ]; then
-        sudo "$SCRIPT_DIR/vpn-dns-update.sh" down 2>/dev/null || true
+        if sudo "$SCRIPT_DIR/vpn-dns-update.sh" down >/dev/null 2>&1; then
+            print_success "DNS configuration restored"
+        fi
     fi    # Clean up PID file
     rm -f /tmp/vpn-connection.pid
 else
@@ -84,7 +86,7 @@ rm -rf /tmp/vpn-certs
 rm -rf /tmp/vpn-profile
 rm -f /tmp/vpn-profile.zip
 rm -f /tmp/vpn-profile.zip.url
-rm -f /tmp/vpn-connection.log
+sudo rm -f /tmp/vpn-connection.log
 
 print_success "Cleanup complete"
 echo ""
