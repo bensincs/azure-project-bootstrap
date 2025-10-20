@@ -1,0 +1,46 @@
+{
+  "name": "Secure MLOps Accelerator",
+  "build": {
+    "dockerfile": "Dockerfile",
+    "context": "../../"
+  },
+  "workspaceMount": "type=bind,src=${localWorkspaceFolder},dst=/workspace",
+  "workspaceFolder": "/workspace",
+  "mounts": [
+    "source=${localEnv:HOME}/.ssh,target=/home/vscode/.ssh,type=bind"
+  ],
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "bierner.markdown-mermaid",
+        "charliermarsh.ruff",
+        "davidanson.vscode-markdownlint",
+        "esbenp.prettier-vscode",
+        "github.copilot",
+        "GitHub.copilot-chat",
+        "GitHub.vscode-pull-request-github",
+        "github.vscode-github-actions",
+        "Gruntfuggly.todo-tree",
+        "hashicorp.terraform",
+        "hediet.vscode-drawio",
+        "ms-azuretools.vscode-azureresourcegroups",
+        "ms-python.debugpy",
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-pyright.pyright",
+        "ms-toolsai.jupyter",
+        "ms-toolsai.vscode-ai",
+        "ms-vscode.azurecli",
+        "ms-vscode.makefile-tools",
+        "PKief.material-icon-theme",
+        "streetsidesoftware.code-spell-checker"
+      ]
+    }
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "./.devcontainer/setup-git-hooks.sh"
+}
