@@ -17,37 +17,16 @@ class ChatService:
 
         # Store agent and MCP tool instances (reused across requests)
         self._agent: Optional[ChatAgent] = None
-        self._mcp_tool: Optional[MCPStdioTool] = None
-
-    async def _get_mcp_tool(self) -> MCPStdioTool:
-        """Get or create the GitHub MCP tool instance"""
-        if self._mcp_tool is None:
-            self._mcp_tool = MCPStdioTool(
-                name="github",
-                command="npx",
-                args=["@modelcontextprotocol/server-github"],
-                load_prompts=False,  # GitHub MCP server doesn't support prompts
-                # Environment variables for the MCP server
-                env={
-                    "GITHUB_PERSONAL_ACCESS_TOKEN": settings.github_token
-                }
-            )
-
-            # Initialize the tool - this starts the MCP server process
-            await self._mcp_tool.__aenter__()
-
-        return self._mcp_tool
 
     async def _get_agent(self) -> ChatAgent:
         """Get or create the chat agent instance"""
         if self._agent is None:
             # Get MCP tool first
-            mcp_tool = await self._get_mcp_tool()
 
             # Use DefaultAzureCredential for authentication
             # This uses Managed Identity in Azure and falls back to Azure CLI locally
             credential = DefaultAzureCredential()
-            
+
             # Create a token provider for Azure OpenAI
             token_provider = get_bearer_token_provider(
                 credential,
@@ -61,10 +40,9 @@ class ChatService:
                 deployment_name=settings.azure_openai_deployment_name,
             )
 
-            # Create agent with tools configured
+            # Create agent
             self._agent = ChatAgent(
                 chat_client=chat_client,
-                tools=[mcp_tool],  # Add tools at agent construction
                 instructions=(
                     "You are a helpful assistant that answers questions about the "
                     "bensincs/azure-project-bootstrap GitHub repository. "

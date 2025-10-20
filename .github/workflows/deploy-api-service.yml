@@ -1,0 +1,101 @@
+name: Deploy API Service
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "services/api/**"
+      - ".github/workflows/deploy-api-service.yml"
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-api:
+    name: "Deploy API Service"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+          terraform_wrapper: false
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install OpenVPN
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openvpn unzip
+
+      - name: Initialize Terraform
+        working-directory: infra/core
+        run: |
+          terraform init -backend-config=backends/backend-dev.hcl -reconfigure
+
+      - name: Connect to VPN
+        working-directory: infra/scripts
+        run: |
+          ./connect.sh --client-cert github-actions
+
+      - name: Verify VPN Connection
+        working-directory: infra/scripts
+        run: |
+          echo "Waiting for VPN connection to stabilize..."
+          sleep 10
+
+          # Use vpn-status.sh to verify connection
+          chmod +x ./vpn-status.sh
+          ./vpn-status.sh
+
+          # Verify VPN is actually connected
+          if ! ip addr show | grep -q "172.16.0"; then
+            echo "✗ VPN connection failed"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Generate Environment File
+        working-directory: services/api
+        run: |
+          chmod +x ./env.sh
+          ./env.sh
+
+      - name: Deploy API Service
+        working-directory: services/api
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          chmod +x ./deploy.sh
+          ./deploy.sh
+
+      - name: Disconnect VPN
+        if: always()
+        working-directory: infra/scripts
+        run: |
+          if [ -f ./disconnect.sh ]; then
+            chmod +x ./disconnect.sh
+            ./disconnect.sh || true
+          fi
