@@ -39,19 +39,29 @@ jobs:
       environment: ${{ github.event.inputs.environment || 'dev' }}
     secrets: inherit
 
-  deploy-services:
-    name: "Deploy All Services"
+  deploy-ui:
+    name: "Deploy UI Service"
     if: ${{ github.event.inputs.deploy_services == 'true' }}
     needs: [deploy-core]
-    strategy:
-      matrix:
-        service:
-          - ui
-          - api
-          - ai-chat
-      max-parallel: 3
-      fail-fast: false
-    uses: ./.github/workflows/deploy-${{ matrix.service }}-service.yml
+    uses: ./.github/workflows/deploy-ui-service.yml
+    with:
+      environment: ${{ github.event.inputs.environment || 'dev' }}
+    secrets: inherit
+
+  deploy-api:
+    name: "Deploy API Service"
+    if: ${{ github.event.inputs.deploy_services == 'true' }}
+    needs: [deploy-core]
+    uses: ./.github/workflows/deploy-api-service.yml
+    with:
+      environment: ${{ github.event.inputs.environment || 'dev' }}
+    secrets: inherit
+
+  deploy-ai-chat:
+    name: "Deploy AI Chat Service"
+    if: ${{ github.event.inputs.deploy_services == 'true' }}
+    needs: [deploy-core]
+    uses: ./.github/workflows/deploy-ai-chat-service.yml
     with:
       environment: ${{ github.event.inputs.environment || 'dev' }}
     secrets: inherit
