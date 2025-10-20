@@ -58,29 +58,20 @@ jobs:
         run: |
           ./connect.sh --client-cert github-actions
 
-      - name: Wait for VPN Connection
+      - name: Verify VPN Connection
+        working-directory: infra/scripts
         run: |
           echo "Waiting for VPN connection to stabilize..."
           sleep 10
 
-          # Verify VPN connection
-          if ip addr show | grep -q "172.16.0"; then
-            echo "✓ VPN connected successfully"
-            ip addr show | grep "172.16.0"
-          else
+          # Use vpn-status.sh to verify connection
+          chmod +x ./vpn-status.sh
+          ./vpn-status.sh
+
+          # Verify VPN is actually connected
+          if ! ip addr show | grep -q "172.16.0"; then
             echo "✗ VPN connection failed"
             exit 1
-          fi
-
-      - name: Verify DNS Configuration
-        run: |
-          echo "Checking DNS configuration..."
-          cat /etc/resolv.conf
-
-          # Test DNS resolution if dig is available
-          if command -v dig &> /dev/null; then
-            echo "Testing DNS resolution..."
-            dig +short google.com || true
           fi
 
       - name: Set up Docker Buildx

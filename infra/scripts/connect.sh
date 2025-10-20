@@ -346,8 +346,10 @@ EOF
 
 print_success "OpenVPN configuration updated"
 
-# Create a log file for OpenVPN
+# Create a log file for OpenVPN with proper permissions
 LOG_FILE="/tmp/vpn-connection.log"
+sudo touch "$LOG_FILE"
+sudo chmod 666 "$LOG_FILE"
 echo "OpenVPN Connection Log - $(date)" > "$LOG_FILE"
 
 # Display connection info
