@@ -92,6 +92,32 @@ output "vpn_gateway_public_ip" {
   value       = var.enable_vpn_gateway ? azurerm_public_ip.vpn_gateway[0].ip_address : null
 }
 
+output "vpn_gateway_id" {
+  description = "ID of the VPN Gateway"
+  value       = var.enable_vpn_gateway ? azurerm_virtual_network_gateway.vpn[0].id : null
+}
+
+output "vpn_client_address_space" {
+  description = "VPN client address space"
+  value       = var.enable_vpn_gateway ? var.vpn_client_address_space : null
+}
+
+output "vpn_certificate_auth_enabled" {
+  description = "Whether certificate-based authentication is enabled"
+  value       = var.enable_vpn_certificate_auth
+}
+
+output "vpn_aad_tenant" {
+  description = "Azure AD tenant URL for VPN authentication"
+  value       = var.enable_vpn_gateway ? "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/" : null
+}
+
+output "vpn_aad_audience" {
+  description = "Azure AD audience (app ID) for VPN authentication"
+  value       = var.enable_vpn_gateway ? "41b23e61-6c1e-4545-b367-cd054e0ed4b4" : null
+}
+
+
 # Virtual Network Outputs
 output "vnet_name" {
   description = "Name of the Virtual Network"

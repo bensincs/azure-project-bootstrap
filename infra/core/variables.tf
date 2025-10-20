@@ -53,6 +53,18 @@ variable "enable_vpn_gateway" {
   default     = false
 }
 
+variable "enable_vpn_certificate_auth" {
+  description = "Enable certificate-based authentication for VPN Gateway (in addition to AAD)"
+  type        = bool
+  default     = false
+}
+
+variable "vpn_client_address_space" {
+  description = "VPN client address pool"
+  type        = list(string)
+  default     = ["172.16.0.0/24"]
+}
+
 # Custom Domain Configuration
 variable "custom_domain" {
   description = "Custom domain for the application (e.g., launchpad.sincs.dev). If not set, will use Application Gateway public IP"

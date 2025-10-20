@@ -32,16 +32,33 @@ resource "azurerm_virtual_network_gateway" "vpn" {
   }
 
   vpn_client_configuration {
-    address_space = ["172.16.0.0/24"] # VPN client address pool
-
+    address_space        = var.vpn_client_address_space
     vpn_client_protocols = ["OpenVPN"] # Only OpenVPN supports Azure AD auth
 
-    vpn_auth_types = ["AAD"]
+    # Configure auth types based on whether certificate auth is enabled
+    vpn_auth_types = var.enable_vpn_certificate_auth ? ["Certificate", "AAD"] : ["AAD"]
 
+    # AAD configuration
     aad_tenant   = "https://login.microsoftonline.com/${data.azurerm_client_config.current.tenant_id}/"
     aad_audience = "41b23e61-6c1e-4545-b367-cd054e0ed4b4" # Azure VPN Client App ID (fixed)
     aad_issuer   = "https://sts.windows.net/${data.azurerm_client_config.current.tenant_id}/"
+
+    # Certificate-based authentication configuration
+    dynamic "root_certificate" {
+      for_each = var.enable_vpn_certificate_auth ? [1] : []
+      content {
+        name             = "vpn-root-cert"
+        public_cert_data = replace(replace(tls_self_signed_cert.vpn_root_cert[0].cert_pem, "-----BEGIN CERTIFICATE-----\n", ""), "\n-----END CERTIFICATE-----\n", "")
+      }
+    }
   }
 
   tags = local.common_tags
+
+  # This allows for longer time for the gateway operations to complete
+  timeouts {
+    create = "120m"
+    update = "120m"
+    delete = "180m"
+  }
 }
