@@ -56,7 +56,7 @@ jobs:
       - name: Connect to VPN
         working-directory: infra/scripts
         run: |
-          ./connect.sh --client-cert github-actions
+          ./vpn-connect.sh --client-cert github-actions
 
       - name: Verify VPN Connection
         working-directory: infra/scripts
@@ -95,7 +95,7 @@ jobs:
         if: always()
         working-directory: infra/scripts
         run: |
-          if [ -f ./disconnect.sh ]; then
-            chmod +x ./disconnect.sh
-            ./disconnect.sh || true
+          if [ -f ./vpn-disconnect.sh ]; then
+            chmod +x ./vpn-disconnect.sh
+            ./vpn-disconnect.sh || true
           fi

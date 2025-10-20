@@ -15,7 +15,7 @@ set -e
 # - resolvconf or systemd-resolved for DNS configuration
 #
 # Usage:
-#   ./connect.sh [OPTIONS]
+#   ./vpn-connect.sh [OPTIONS]
 #
 # Options:
 #   -d, --download           Download certificates only (don't connect)

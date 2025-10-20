@@ -78,14 +78,14 @@ DNS_RESOLVER=$(grep "dhcp-option DNS" /tmp/vpn-connection.log 2>/dev/null | sed 
 
 if [ -n "$DNS_RESOLVER" ]; then
     echo -e "  ${GREEN}✓${NC} VPN DNS Server: $DNS_RESOLVER"
-    
+
     # Check if systemd-resolved is running
     if systemctl is-active --quiet systemd-resolved 2>/dev/null || [ -L /etc/resolv.conf ] && readlink /etc/resolv.conf | grep -q "systemd"; then
         echo -e "  ${BLUE}ℹ${NC} Using systemd-resolved"
-        
+
         # Get VPN interface
         VPN_IFACE=$(ip -4 addr show | grep "inet 172.16.0" | awk '{print $NF}' | head -1)
-        
+
         # Check if DNS is configured for the VPN interface
         if command -v resolvectl &> /dev/null; then
             if resolvectl status "$VPN_IFACE" 2>/dev/null | grep -q "$DNS_RESOLVER"; then
