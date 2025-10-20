@@ -20,5 +20,5 @@ app_gateway_ssl_certificate_id = "https://kv-bootstrap-pivgidzg.vault.azure.net/
 # }
 
 enable_vpn_gateway          = true
-enable_vpn_certificate_auth = false # Set to true to enable certificate-based auth for VPN
+enable_vpn_certificate_auth = true # Set to true to enable certificate-based auth for VPN
 custom_domain               = "launchpad.sincs.dev"

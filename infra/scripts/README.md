@@ -14,10 +14,10 @@ Connects to the Azure VPN Gateway using certificate-based authentication via Ope
    ```bash
    # macOS
    brew install openvpn
-   
+
    # Ubuntu/Debian
    sudo apt-get install openvpn
-   
+
    # RHEL/CentOS
    sudo yum install openvpn
    ```
