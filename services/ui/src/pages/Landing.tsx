@@ -25,11 +25,6 @@ export default function Landing() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            {user && (
-              <div className="text-sm text-white">
-                Welcome, {user.profile.name || user.profile.email}
-              </div>
-            )}
             <a
               href="https://github.com/bensincs/azure-project-bootstrap"
               target="_blank"
