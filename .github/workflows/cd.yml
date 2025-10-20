@@ -1,0 +1,57 @@
+name: Continuous Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+      deploy_core:
+        description: "Deploy core infrastructure"
+        required: false
+        default: true
+        type: boolean
+      deploy_services:
+        description: "Deploy services"
+        required: false
+        default: true
+        type: boolean
+
+permissions:
+  id-token: write
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: cd-${{ github.event.inputs.environment || 'dev' }}
+  cancel-in-progress: false
+
+jobs:
+  deploy-core:
+    name: "Deploy Core Infrastructure"
+    if: ${{ github.event.inputs.deploy_core == 'true' }}
+    uses: ./.github/workflows/deploy-core.yml
+    with:
+      environment: ${{ github.event.inputs.environment || 'dev' }}
+    secrets: inherit
+
+  deploy-services:
+    name: "Deploy All Services"
+    if: ${{ github.event.inputs.deploy_services == 'true' }}
+    needs: [deploy-core]
+    strategy:
+      matrix:
+        service:
+          - ui
+          - api
+          - ai-chat
+      max-parallel: 3
+      fail-fast: false
+    uses: ./.github/workflows/deploy-${{ matrix.service }}-service.yml
+    with:
+      environment: ${{ github.event.inputs.environment || 'dev' }}
+    secrets: inherit

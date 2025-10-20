@@ -1,18 +1,6 @@
 name: Deploy Core Infrastructure
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "infra/core/**"
-      - ".github/workflows/deploy-core.yml"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "infra/core/**"
-      - ".github/workflows/deploy-core.yml"
   workflow_dispatch:
     inputs:
       environment:
@@ -22,15 +10,18 @@ on:
         type: choice
         options:
           - dev
+  workflow_call:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: false
+        default: "dev"
+        type: string
 
 permissions:
   id-token: write
   contents: write
   pull-requests: write
-
-concurrency:
-  group: azure-services-${{ github.event.inputs.environment || 'dev' }}
-  cancel-in-progress: false
 
 jobs:
   terraform:
