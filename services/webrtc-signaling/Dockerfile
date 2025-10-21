@@ -3,10 +3,10 @@ FROM node:20-alpine
 WORKDIR /app
 
 # Copy package files
-COPY package*.json ./
+COPY package.json y./
 
 # Install dependencies
-RUN npm ci --only=production
+RUN yarn install
 
 # Copy application files
 COPY . .
@@ -21,4 +21,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
 # Run as non-root user
 USER node
 
-CMD ["npm", "start"]
+CMD ["yarn", "start"]
