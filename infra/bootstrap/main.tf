@@ -308,6 +308,15 @@ resource "azuread_application_federated_identity_credential" "github_actions_mai
   subject        = "repo:${var.github_repository}:ref:refs/heads/main"
 }
 
+# Federated identity credential for GitHub Actions on develop branch
+resource "azuread_application_federated_identity_credential" "github_actions_develop" {
+  application_id = azuread_application.github_actions.id
+  display_name   = "github-actions-develop"
+  audiences      = ["api://AzureADTokenExchange"]
+  issuer         = "https://token.actions.githubusercontent.com"
+  subject        = "repo:${var.github_repository}:ref:refs/heads/develop"
+}
+
 # Federated identity credential for GitHub Actions on pull requests
 resource "azuread_application_federated_identity_credential" "github_actions_pr" {
   application_id = azuread_application.github_actions.id
