@@ -187,6 +187,9 @@ VPN_GATEWAY_PUBLIC_IP=$(terraform output -raw vpn_gateway_public_ip 2>/dev/null 
 RESOURCE_GROUP=$(terraform output -raw resource_group_name 2>/dev/null || echo "")
 KEY_VAULT_NAME=$(terraform output -raw key_vault_name 2>/dev/null || echo "")
 CERT_AUTH_ENABLED=$(terraform output -raw vpn_certificate_auth_enabled 2>/dev/null || echo "false")
+ENVIRONMENT=$(terraform output -raw environment 2>/dev/null || echo "dev")
+CLIENT_CERT_SECRET_NAME=$(terraform output -raw vpn_client_cert_secret_name 2>/dev/null || echo "github-actions-client-cert-pem-dev")
+CLIENT_KEY_SECRET_NAME=$(terraform output -raw vpn_client_key_secret_name 2>/dev/null || echo "github-actions-client-key-pem-dev")
 
 # Validate outputs
 if [ -z "$VPN_GATEWAY_NAME" ] || [ "$VPN_GATEWAY_NAME" == "null" ]; then
@@ -198,6 +201,7 @@ print_success "VPN Gateway Name: $VPN_GATEWAY_NAME"
 print_success "Resource Group: $RESOURCE_GROUP"
 print_success "Public IP: $VPN_GATEWAY_PUBLIC_IP"
 print_success "Certificate Auth: $CERT_AUTH_ENABLED"
+print_success "Environment: $ENVIRONMENT"
 
 # Verify certificate auth is enabled
 if [ "$CERT_AUTH_ENABLED" != "true" ]; then
@@ -216,16 +220,18 @@ CERT_DIR="/tmp/vpn-certs"
 mkdir -p "$CERT_DIR"
 
 print_info "Downloading client certificate..."
+print_info "Secret name: $CLIENT_CERT_SECRET_NAME"
 az keyvault secret show \
     --vault-name "$KEY_VAULT_NAME" \
-    --name "${CLIENT_CERT_NAME}-client-cert-pem" \
+    --name "$CLIENT_CERT_SECRET_NAME" \
     --query value -o tsv > "${CERT_DIR}/client.crt"
 print_success "Client certificate downloaded"
 
 print_info "Downloading client private key..."
+print_info "Secret name: $CLIENT_KEY_SECRET_NAME"
 az keyvault secret show \
     --vault-name "$KEY_VAULT_NAME" \
-    --name "${CLIENT_CERT_NAME}-client-key-pem" \
+    --name "$CLIENT_KEY_SECRET_NAME" \
     --query value -o tsv > "${CERT_DIR}/client.key"
 print_success "Client private key downloaded"
 

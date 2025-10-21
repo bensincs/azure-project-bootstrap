@@ -8,6 +8,11 @@ output "resource_group_id" {
   value       = azurerm_resource_group.core.id
 }
 
+output "environment" {
+  description = "Environment name (dev, stag, prod)"
+  value       = var.environment
+}
+
 output "storage_account_name" {
   description = "Name of the storage account"
   value       = azurerm_storage_account.core.name
@@ -115,6 +120,16 @@ output "vpn_aad_tenant" {
 output "vpn_aad_audience" {
   description = "Azure AD audience (app ID) for VPN authentication"
   value       = var.enable_vpn_gateway ? "41b23e61-6c1e-4545-b367-cd054e0ed4b4" : null
+}
+
+output "vpn_client_cert_secret_name" {
+  description = "Name of the GitHub Actions client certificate secret in Key Vault"
+  value       = var.enable_vpn_certificate_auth ? "github-actions-client-cert-pem-${var.environment}" : null
+}
+
+output "vpn_client_key_secret_name" {
+  description = "Name of the GitHub Actions client private key secret in Key Vault"
+  value       = var.enable_vpn_certificate_auth ? "github-actions-client-key-pem-${var.environment}" : null
 }
 
 

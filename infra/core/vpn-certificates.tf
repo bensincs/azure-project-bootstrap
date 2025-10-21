@@ -92,7 +92,7 @@ resource "tls_locally_signed_cert" "github_actions_client_cert" {
 # Store the root certificate in Key Vault as a secret
 resource "azurerm_key_vault_secret" "vpn_root_cert_pem" {
   count        = var.enable_vpn_certificate_auth ? 1 : 0
-  name         = "vpn-root-cert-pem"
+  name         = "vpn-root-cert-pem-${var.environment}"
   value        = tls_self_signed_cert.vpn_root_cert[0].cert_pem
   key_vault_id = var.key_vault_id
 
@@ -102,7 +102,7 @@ resource "azurerm_key_vault_secret" "vpn_root_cert_pem" {
 # Store the root private key in Key Vault as a secret
 resource "azurerm_key_vault_secret" "vpn_root_key_pem" {
   count        = var.enable_vpn_certificate_auth ? 1 : 0
-  name         = "vpn-root-key-pem"
+  name         = "vpn-root-key-pem-${var.environment}"
   value        = tls_private_key.vpn_root_key[0].private_key_pem
   key_vault_id = var.key_vault_id
 
@@ -112,7 +112,7 @@ resource "azurerm_key_vault_secret" "vpn_root_key_pem" {
 # Store root certificate in PKCS#12 format for compatibility
 resource "azurerm_key_vault_secret" "vpn_root_cert_pfx" {
   count        = var.enable_vpn_certificate_auth ? 1 : 0
-  name         = "vpn-root-cert-pfx"
+  name         = "vpn-root-cert-pfx-${var.environment}"
   value        = base64encode(tls_self_signed_cert.vpn_root_cert[0].cert_pem)
   key_vault_id = var.key_vault_id
 
@@ -122,7 +122,7 @@ resource "azurerm_key_vault_secret" "vpn_root_cert_pfx" {
 # Store GitHub Actions client certificate in Key Vault
 resource "azurerm_key_vault_secret" "github_actions_client_cert_pem" {
   count        = var.enable_vpn_certificate_auth ? 1 : 0
-  name         = "github-actions-client-cert-pem"
+  name         = "github-actions-client-cert-pem-${var.environment}"
   value        = tls_locally_signed_cert.github_actions_client_cert[0].cert_pem
   key_vault_id = var.key_vault_id
 
@@ -132,7 +132,7 @@ resource "azurerm_key_vault_secret" "github_actions_client_cert_pem" {
 # Store GitHub Actions client private key in Key Vault
 resource "azurerm_key_vault_secret" "github_actions_client_key_pem" {
   count        = var.enable_vpn_certificate_auth ? 1 : 0
-  name         = "github-actions-client-key-pem"
+  name         = "github-actions-client-key-pem-${var.environment}"
   value        = tls_private_key.github_actions_client_key[0].private_key_pem
   key_vault_id = var.key_vault_id
 
@@ -142,7 +142,7 @@ resource "azurerm_key_vault_secret" "github_actions_client_key_pem" {
 # Store GitHub Actions client certificate in PKCS#12 format
 resource "azurerm_key_vault_secret" "github_actions_client_cert_pfx" {
   count        = var.enable_vpn_certificate_auth ? 1 : 0
-  name         = "github-actions-client-cert-pfx"
+  name         = "github-actions-client-cert-pfx-${var.environment}"
   value        = base64encode(tls_locally_signed_cert.github_actions_client_cert[0].cert_pem)
   key_vault_id = var.key_vault_id
 
