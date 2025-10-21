@@ -111,3 +111,12 @@ jobs:
     with:
       environment: ${{ needs.determine-environment.outputs.environment }}
     secrets: inherit
+
+  deploy-webrtc-signaling:
+    name: "Deploy WebRTC Signaling Service"
+    needs: [determine-environment, deploy-core]
+    if: ${{ needs.determine-environment.outputs.deploy_services == 'true' && (success() || needs.deploy-core.result == 'skipped') }}
+    uses: ./.github/workflows/deploy-webrtc-signaling-service.yml
+    with:
+      environment: ${{ needs.determine-environment.outputs.environment }}
+    secrets: inherit

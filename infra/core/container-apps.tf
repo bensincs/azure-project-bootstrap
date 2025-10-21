@@ -226,3 +226,79 @@ resource "azurerm_container_app" "ai_chat_service" {
     ]
   }
 }
+
+# Container App for WebRTC Signaling Service
+resource "azurerm_container_app" "webrtc_signaling_service" {
+  name                         = "ca-${var.resource_name_prefix}-webrtc-signaling-${var.environment}"
+  resource_group_name          = azurerm_resource_group.core.name
+  container_app_environment_id = azurerm_container_app_environment.core.id
+  revision_mode                = "Single"
+  workload_profile_name        = "Consumption"
+
+  registry {
+    server               = azurerm_container_registry.core.login_server
+    username             = azurerm_container_registry.core.admin_username
+    password_secret_name = "acr-password"
+  }
+
+  secret {
+    name  = "acr-password"
+    value = azurerm_container_registry.core.admin_password
+  }
+
+  template {
+    container {
+      name = "webrtc-signaling-service"
+      # Start with a placeholder image - will be updated by deploy script
+      image  = "mcr.microsoft.com/azuredocs/containerapps-helloworld:latest"
+      cpu    = 0.5
+      memory = "1Gi"
+
+      # Environment variables - will be overridden by deploy script with .env values
+      env {
+        name  = "PORT"
+        value = "3000"
+      }
+      env {
+        name  = "NODE_ENV"
+        value = "production"
+      }
+      env {
+        name  = "AZURE_TENANT_ID"
+        value = data.azurerm_client_config.current.tenant_id
+      }
+      env {
+        name  = "AZURE_CLIENT_ID"
+        value = azuread_application.main.client_id
+      }
+      env {
+        name  = "ALLOWED_ORIGINS"
+        value = ""
+      }
+    }
+
+    min_replicas = 1
+    max_replicas = 5
+  }
+
+  ingress {
+    external_enabled = true
+    target_port      = 3000
+    transport        = "http"
+
+    traffic_weight {
+      latest_revision = true
+      percentage      = 100
+    }
+  }
+
+  tags = local.common_tags
+
+  # Ignore image and env changes so we can update via Azure CLI
+  lifecycle {
+    ignore_changes = [
+      template[0].container[0].image,
+      template[0].container[0].env,
+    ]
+  }
+}

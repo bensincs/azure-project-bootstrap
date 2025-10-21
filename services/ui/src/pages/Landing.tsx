@@ -56,6 +56,9 @@ export default function Landing() {
                 <Link to="/ai-chat" className="ui-button-plain">
                   AI Assistant
                 </Link>
+                <Link to="/video-chat" className="ui-button-plain">
+                  Video Chat
+                </Link>
                 <p className="text-sm text-slate-400">
                   Explore the deployed sample UI backed by the same services
                   shipped in this repo.

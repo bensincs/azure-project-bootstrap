@@ -1,0 +1,110 @@
+name: Deploy WebRTC Signaling Service
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - stag
+  workflow_call:
+    inputs:
+      environment:
+        description: "Environment to deploy"
+        required: false
+        default: "dev"
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy-webrtc-signaling:
+    name: "Deploy WebRTC Signaling Service"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.13.3
+          terraform_wrapper: false
+
+      - name: Azure Login
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install OpenVPN
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openvpn unzip
+
+      - name: Initialize Terraform
+        working-directory: infra/core
+        run: |
+          terraform init -backend-config=backends/backend-${{ inputs.environment }}.hcl -reconfigure
+
+      - name: Connect to VPN
+        working-directory: infra/scripts
+        run: |
+          ./vpn-connect.sh --client-cert github-actions
+
+      - name: Verify VPN Connection
+        working-directory: infra/scripts
+        run: |
+          echo "Waiting for VPN connection to stabilize..."
+          sleep 10
+
+          # Use vpn-status.sh to verify connection
+          chmod +x ./vpn-status.sh
+          ./vpn-status.sh
+
+          # Verify VPN is actually connected
+          if ! ip addr show | grep -q "172.16.0"; then
+            echo "✗ VPN connection failed"
+            exit 1
+          fi
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: services/webrtc-signaling/package.json
+
+      - name: Generate Environment File
+        working-directory: services/webrtc-signaling
+        run: |
+          chmod +x ./env.sh
+          ./env.sh
+
+      - name: Deploy WebRTC Signaling Service
+        working-directory: services/webrtc-signaling
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          chmod +x ./deploy.sh
+          ./deploy.sh
+
+      - name: Disconnect VPN
+        if: always()
+        working-directory: infra/scripts
+        run: |
+          if [ -f ./vpn-disconnect.sh ]; then
+            chmod +x ./vpn-disconnect.sh
+            ./vpn-disconnect.sh || true
+          fi

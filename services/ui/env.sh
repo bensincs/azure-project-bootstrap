@@ -33,6 +33,7 @@ fi
 # Get required outputs
 AZURE_CLIENT_ID=$(terraform output -raw azure_ad_application_id 2>/dev/null || echo "")
 AZURE_TENANT_ID=$(terraform output -raw azure_ad_tenant_id 2>/dev/null || echo "")
+WEBRTC_SIGNALING_FQDN=$(terraform output -raw webrtc_signaling_service_fqdn 2>/dev/null || echo "")
 
 cd ../../services/ui
 
@@ -47,6 +48,12 @@ if [ -z "$AZURE_TENANT_ID" ]; then
     echo "❌ Error: azure_ad_tenant_id not found in Terraform outputs"
     echo "   Make sure Terraform has been applied and outputs are available"
     exit 1
+fi
+
+# Build WebRTC Signaling URL
+WEBRTC_SIGNALING_URL=""
+if [ -n "$WEBRTC_SIGNALING_FQDN" ]; then
+    WEBRTC_SIGNALING_URL="https://$WEBRTC_SIGNALING_FQDN"
 fi
 
 # Generate .env file
@@ -66,6 +73,9 @@ VITE_WS_URL=/api/ws
 # AI Chat API URL
 VITE_AI_CHAT_URL=/ai-chat
 
+# WebRTC Signaling URL
+VITE_WEBRTC_SIGNALING_URL=$WEBRTC_SIGNALING_URL
+
 # Azure AD Authentication
 VITE_AUTH_CLIENT_ID=$AZURE_CLIENT_ID
 VITE_AUTH_TENANT_ID=$AZURE_TENANT_ID
@@ -77,6 +87,7 @@ echo "📄 Generated values:"
 echo "   VITE_API_URL=/api"
 echo "   VITE_WS_URL=/api/ws"
 echo "   VITE_AI_CHAT_URL=/ai-chat"
+echo "   VITE_WEBRTC_SIGNALING_URL=$WEBRTC_SIGNALING_URL"
 echo "   VITE_AUTH_CLIENT_ID=$AZURE_CLIENT_ID"
 echo "   VITE_AUTH_TENANT_ID=$AZURE_TENANT_ID"
 echo ""

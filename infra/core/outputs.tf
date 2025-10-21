@@ -234,3 +234,19 @@ output "ai_chat_service_fqdn" {
   description = "FQDN of the AI Chat Container App"
   value       = azurerm_container_app.ai_chat_service.ingress[0].fqdn
 }
+
+# WebRTC Signaling Service Outputs
+output "webrtc_signaling_service_name" {
+  description = "Name of the WebRTC Signaling Container App"
+  value       = azurerm_container_app.webrtc_signaling_service.name
+}
+
+output "webrtc_signaling_service_url" {
+  description = "Direct URL for the WebRTC Signaling service"
+  value       = "https://${azurerm_container_app.webrtc_signaling_service.ingress[0].fqdn}"
+}
+
+output "webrtc_signaling_service_fqdn" {
+  description = "FQDN of the WebRTC Signaling Container App"
+  value       = azurerm_container_app.webrtc_signaling_service.ingress[0].fqdn
+}
