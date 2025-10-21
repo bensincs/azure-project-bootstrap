@@ -65,6 +65,14 @@ locals {
       location        = "uaenorth"
       subscription_id = var.subscription_id
     }
+    "core/stag" = {
+      state_key       = "core/stag.tfstate"
+      backend_path    = "${path.module}/../core/backends/backend-stag.hcl"
+      tfvars_path     = "${path.module}/../core/vars/stag.tfvars"
+      environment     = "stag"
+      location        = "uaenorth"
+      subscription_id = var.subscription_id
+    }
   }
 
   mcaps_tags = {
@@ -237,6 +245,10 @@ resource "azurerm_key_vault_certificate" "app_gateway" {
         ]
       }
     }
+  }
+
+  lifecycle {
+    ignore_changes = [certificate_policy]
   }
 
   depends_on = [
@@ -429,5 +441,5 @@ output "key_vault_uri" {
 
 output "app_gateway_ssl_certificate_id" {
   description = "Application Gateway SSL certificate secret ID"
-  value       = azurerm_key_vault_certificate.app_gateway.secret_id
+  value       = azurerm_key_vault_certificate.app_gateway.versionless_secret_id
 }

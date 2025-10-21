@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - dev
+          - stag
   workflow_call:
     inputs:
       environment:
@@ -76,7 +77,7 @@ jobs:
 
       - name: Terraform Init
         id: init
-        run: terraform init -backend-config=backends/backend-dev.hcl -reconfigure
+        run: terraform init -backend-config=backends/backend-${{ inputs.environment }}.hcl -reconfigure
 
       - name: Terraform Validate
         id: validate
@@ -84,7 +85,7 @@ jobs:
 
       - name: Terraform Plan
         id: plan
-        run: terraform plan -var-file=vars/dev.tfvars -no-color -out=tfplan
+        run: terraform plan -var-file=vars/${{ inputs.environment }}.tfvars -no-color -out=tfplan
         continue-on-error: true
 
       - name: Comment PR with Plan
@@ -138,7 +139,7 @@ jobs:
           script: |
             const output = `#### Terraform Apply ✅
 
-            Infrastructure has been successfully deployed to **dev** environment.
+            Infrastructure has been successfully deployed to **${{ inputs.environment }}** environment.
 
             *Deployed by: @${{ github.actor }}*`;
 

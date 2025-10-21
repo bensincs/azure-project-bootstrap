@@ -1,6 +1,10 @@
 name: Continuous Deployment
 
 on:
+  push:
+    branches:
+      - develop
+      - main
   workflow_dispatch:
     inputs:
       environment:
@@ -10,6 +14,7 @@ on:
         type: choice
         options:
           - dev
+          - stag
       deploy_core:
         description: "Deploy core infrastructure"
         required: false
@@ -27,41 +32,82 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: cd-${{ github.event.inputs.environment || 'dev' }}
+  group: cd-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'stag' || 'dev') }}
   cancel-in-progress: false
 
 jobs:
+  determine-environment:
+    name: "Determine Target Environment"
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      deploy_core: ${{ steps.set-flags.outputs.deploy_core }}
+      deploy_services: ${{ steps.set-flags.outputs.deploy_services }}
+    steps:
+      - name: Set Environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [ "${{ github.ref }}" == "refs/heads/main" ]; then
+            echo "environment=stag" >> $GITHUB_OUTPUT
+          else
+            echo "environment=dev" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Set Deployment Flags
+        id: set-flags
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "deploy_core=${{ github.event.inputs.deploy_core }}" >> $GITHUB_OUTPUT
+            echo "deploy_services=${{ github.event.inputs.deploy_services }}" >> $GITHUB_OUTPUT
+          else
+            echo "deploy_core=true" >> $GITHUB_OUTPUT
+            echo "deploy_services=true" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Show Deployment Plan
+        run: |
+          echo "🚀 Deployment Plan"
+          echo "=================="
+          echo "Trigger: ${{ github.event_name }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Target Environment: ${{ steps.set-env.outputs.environment }}"
+          echo "Deploy Core: ${{ steps.set-flags.outputs.deploy_core }}"
+          echo "Deploy Services: ${{ steps.set-flags.outputs.deploy_services }}"
+
   deploy-core:
     name: "Deploy Core Infrastructure"
-    if: ${{ github.event.inputs.deploy_core == 'true' }}
+    needs: [determine-environment]
+    if: ${{ needs.determine-environment.outputs.deploy_core == 'true' }}
     uses: ./.github/workflows/deploy-core.yml
     with:
-      environment: ${{ github.event.inputs.environment || 'dev' }}
+      environment: ${{ needs.determine-environment.outputs.environment }}
     secrets: inherit
 
   deploy-ui:
     name: "Deploy UI Service"
-    if: ${{ github.event.inputs.deploy_services == 'true' }}
-    needs: [deploy-core]
+    needs: [determine-environment, deploy-core]
+    if: ${{ needs.determine-environment.outputs.deploy_services == 'true' && (success() || needs.deploy-core.result == 'skipped') }}
     uses: ./.github/workflows/deploy-ui-service.yml
     with:
-      environment: ${{ github.event.inputs.environment || 'dev' }}
+      environment: ${{ needs.determine-environment.outputs.environment }}
     secrets: inherit
 
   deploy-api:
     name: "Deploy API Service"
-    if: ${{ github.event.inputs.deploy_services == 'true' }}
-    needs: [deploy-core]
+    needs: [determine-environment, deploy-core]
+    if: ${{ needs.determine-environment.outputs.deploy_services == 'true' && (success() || needs.deploy-core.result == 'skipped') }}
     uses: ./.github/workflows/deploy-api-service.yml
     with:
-      environment: ${{ github.event.inputs.environment || 'dev' }}
+      environment: ${{ needs.determine-environment.outputs.environment }}
     secrets: inherit
 
   deploy-ai-chat:
     name: "Deploy AI Chat Service"
-    if: ${{ github.event.inputs.deploy_services == 'true' }}
-    needs: [deploy-core]
+    needs: [determine-environment, deploy-core]
+    if: ${{ needs.determine-environment.outputs.deploy_services == 'true' && (success() || needs.deploy-core.result == 'skipped') }}
     uses: ./.github/workflows/deploy-ai-chat-service.yml
     with:
-      environment: ${{ github.event.inputs.environment || 'dev' }}
+      environment: ${{ needs.determine-environment.outputs.environment }}
     secrets: inherit
