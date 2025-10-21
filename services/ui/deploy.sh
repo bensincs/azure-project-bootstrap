@@ -9,7 +9,7 @@ echo "📋 Environment: $ENVIRONMENT"
 # Get infrastructure outputs from Terraform
 cd ../../infra/core
 CONTAINER_REGISTRY=$(terraform output -raw container_registry_login_server)
-CONTAINER_APP_NAME="ca-core-ui-service-$ENVIRONMENT"
+CONTAINER_APP_NAME=$(terraform output -raw ui_service_name)
 RESOURCE_GROUP=$(terraform output -raw resource_group_name)
 cd ../../services/ui
 
