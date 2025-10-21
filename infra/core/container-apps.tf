@@ -16,7 +16,7 @@ resource "azurerm_container_app_environment" "core" {
   location                           = azurerm_resource_group.core.location
   log_analytics_workspace_id         = azurerm_log_analytics_workspace.core.id
   infrastructure_subnet_id           = azurerm_subnet.container_apps.id
-  infrastructure_resource_group_name = "ME_cae-core-dev_rg-core-dev_westeurope"
+  infrastructure_resource_group_name = "ME_cae-core-${var.environment}_rg-core-${var.environment}_${azurerm_resource_group.core.location}"
   internal_load_balancer_enabled     = true
 
   workload_profile {
