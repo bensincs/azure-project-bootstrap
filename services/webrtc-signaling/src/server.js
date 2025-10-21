@@ -138,8 +138,12 @@ app.use(
 
 app.use(express.json());
 
+// Base path for when running behind Application Gateway
+const BASE_PATH = process.env.BASE_PATH || "";
+
 // Socket.IO setup
 const io = new Server(httpServer, {
+  path: BASE_PATH ? `${BASE_PATH}/socket.io` : "/socket.io",
   cors: {
     origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
     credentials: true,
@@ -183,7 +187,7 @@ class Room {
 }
 
 // REST API endpoints
-app.get("/health", (req, res) => {
+app.get(`${BASE_PATH}/health`, (req, res) => {
   res.json({
     status: "healthy",
     rooms: rooms.size,
@@ -192,7 +196,7 @@ app.get("/health", (req, res) => {
   });
 });
 
-app.get("/api/rooms", authenticateJWT, (req, res) => {
+app.get(`${BASE_PATH}/api/rooms`, authenticateJWT, (req, res) => {
   const roomList = Array.from(rooms.values()).map((room) => ({
     id: room.id,
     name: room.name,
@@ -204,7 +208,7 @@ app.get("/api/rooms", authenticateJWT, (req, res) => {
   res.json({ rooms: roomList });
 });
 
-app.post("/api/rooms", authenticateJWT, (req, res) => {
+app.post(`${BASE_PATH}/api/rooms`, authenticateJWT, (req, res) => {
   const { name } = req.body;
   if (!name) {
     return res.status(400).json({ error: "Room name is required" });
@@ -223,7 +227,7 @@ app.post("/api/rooms", authenticateJWT, (req, res) => {
   });
 });
 
-app.get("/api/rooms/:roomId", authenticateJWT, (req, res) => {
+app.get(`${BASE_PATH}/api/rooms/:roomId`, authenticateJWT, (req, res) => {
   const { roomId } = req.params;
   const room = rooms.get(roomId);
 
@@ -241,7 +245,7 @@ app.get("/api/rooms/:roomId", authenticateJWT, (req, res) => {
   });
 });
 
-app.delete("/api/rooms/:roomId", authenticateJWT, (req, res) => {
+app.delete(`${BASE_PATH}/api/rooms/:roomId`, authenticateJWT, (req, res) => {
   const { roomId } = req.params;
   const room = rooms.get(roomId);
 
@@ -458,7 +462,8 @@ const PORT = process.env.PORT || 3000;
 httpServer.listen(PORT, () => {
   console.log(`🚀 WebRTC Signaling Server running on port ${PORT}`);
   console.log(`   Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`   Health check: http://localhost:${PORT}/health`);
+  console.log(`   Base Path: ${BASE_PATH || "/"}`);
+  console.log(`   Health check: http://localhost:${PORT}${BASE_PATH}/health`);
 
   // Authentication status
   if (SKIP_TOKEN_VERIFICATION) {

@@ -275,6 +275,10 @@ resource "azurerm_container_app" "webrtc_signaling_service" {
         name  = "ALLOWED_ORIGINS"
         value = ""
       }
+      env {
+        name  = "BASE_PATH"
+        value = "/wrtc-api"
+      }
     }
 
     min_replicas = 1

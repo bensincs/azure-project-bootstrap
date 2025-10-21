@@ -82,6 +82,11 @@ resource "azurerm_application_gateway" "core" {
     fqdns = [azurerm_container_app.ai_chat_service.ingress[0].fqdn]
   }
 
+  backend_address_pool {
+    name  = "webrtc-backend-pool"
+    fqdns = [azurerm_container_app.webrtc_signaling_service.ingress[0].fqdn]
+  }
+
   # Backend HTTP settings for API Service
   backend_http_settings {
     name                  = "api-http-settings"
@@ -115,6 +120,17 @@ resource "azurerm_application_gateway" "core" {
     host_name             = azurerm_container_app.ai_chat_service.ingress[0].fqdn
   }
 
+  # Backend HTTP settings for WebRTC Signaling Service
+  backend_http_settings {
+    name                  = "webrtc-http-settings"
+    cookie_based_affinity = "Enabled" # Required for WebSocket connections
+    port                  = 443
+    protocol              = "Https"
+    request_timeout       = 120 # Increased timeout for long-lived WebSocket connections
+    probe_name            = "webrtc-health-probe"
+    host_name             = azurerm_container_app.webrtc_signaling_service.ingress[0].fqdn
+  }
+
   # Health probes
   probe {
     name                                      = "api-health-probe"
@@ -146,6 +162,19 @@ resource "azurerm_application_gateway" "core" {
     name                                      = "ai-chat-health-probe"
     protocol                                  = "Https"
     path                                      = "/ai-chat/health"
+    interval                                  = 30
+    timeout                                   = 30
+    unhealthy_threshold                       = 3
+    pick_host_name_from_backend_http_settings = true
+    match {
+      status_code = ["200-399"]
+    }
+  }
+
+  probe {
+    name                                      = "webrtc-health-probe"
+    protocol                                  = "Https"
+    path                                      = "/wrtc-api/health"
     interval                                  = 30
     timeout                                   = 30
     unhealthy_threshold                       = 3
@@ -218,6 +247,13 @@ resource "azurerm_application_gateway" "core" {
       backend_address_pool_name  = "ai-chat-backend-pool"
       backend_http_settings_name = "ai-chat-http-settings"
     }
+
+    path_rule {
+      name                       = "webrtc-rule"
+      paths                      = ["/wrtc-api/*"]
+      backend_address_pool_name  = "webrtc-backend-pool"
+      backend_http_settings_name = "webrtc-http-settings"
+    }
   }
 
   tags = local.common_tags
@@ -226,6 +262,7 @@ resource "azurerm_application_gateway" "core" {
     azurerm_container_app.api_service,
     azurerm_container_app.ui_service,
     azurerm_container_app.ai_chat_service,
+    azurerm_container_app.webrtc_signaling_service,
     azurerm_key_vault_access_policy.app_gateway
   ]
 }

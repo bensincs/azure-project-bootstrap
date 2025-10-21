@@ -64,6 +64,9 @@ SKIP_TOKEN_VERIFICATION=false
 # CORS Configuration
 ALLOWED_ORIGINS=${ALLOWED_ORIGINS}
 
+# Base Path (for Application Gateway routing)
+BASE_PATH=/wrtc-api
+
 # Logging
 LOG_LEVEL=info
 EOF
@@ -75,4 +78,5 @@ echo "   Environment: $ENVIRONMENT"
 echo "   Azure Tenant ID: $AZURE_TENANT_ID"
 echo "   Azure Client ID: $AZURE_CLIENT_ID"
 echo "   Allowed Origins: $ALLOWED_ORIGINS"
+echo "   Base Path: /wrtc-api"
 echo ""
