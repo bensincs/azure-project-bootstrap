@@ -129,9 +129,13 @@ async function authenticateJWT(req, res, next) {
 }
 
 // Configure CORS
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : true; // true allows all origins when ALLOWED_ORIGINS is not set
+
 app.use(
   cors({
-    origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
+    origin: allowedOrigins,
     credentials: true,
   })
 );
@@ -145,7 +149,7 @@ const BASE_PATH = process.env.BASE_PATH || "";
 const io = new Server(httpServer, {
   path: BASE_PATH ? `${BASE_PATH}/socket.io` : "/socket.io",
   cors: {
-    origin: process.env.ALLOWED_ORIGINS?.split(",") || "*",
+    origin: allowedOrigins,
     credentials: true,
   },
   transports: ["websocket", "polling"],

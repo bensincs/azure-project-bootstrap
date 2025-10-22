@@ -239,7 +239,33 @@ export default function VideoChat() {
   useEffect(() => {
     if (!user?.access_token) return;
 
-    const newSocket = io(SIGNALING_SERVER, {
+    // Parse the signaling server URL to extract base URL and path
+    const getSocketConfig = () => {
+      if (SIGNALING_SERVER.startsWith("http")) {
+        // Absolute URL like https://74.243.252.255/wrtc-api
+        const url = new URL(SIGNALING_SERVER);
+        const basePath = url.pathname === "/" ? "" : url.pathname;
+        const baseUrl = `${url.protocol}//${url.host}`;
+
+        return {
+          url: baseUrl,
+          path: basePath ? `${basePath}/socket.io` : "/socket.io",
+        };
+      } else {
+        // Relative path like /wrtc-api
+        const basePath = SIGNALING_SERVER === "/" ? "" : SIGNALING_SERVER;
+        return {
+          url: window.location.origin,
+          path: basePath ? `${basePath}/socket.io` : "/socket.io",
+        };
+      }
+    };
+
+    const socketConfig = getSocketConfig();
+    console.log("Socket.IO config:", socketConfig);
+
+    const newSocket = io(socketConfig.url, {
+      path: socketConfig.path,
       transports: ["websocket", "polling"],
       auth: {
         token: user.access_token,
