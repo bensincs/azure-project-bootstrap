@@ -29,11 +29,19 @@ interface WebRTCConnection {
 const SIGNALING_SERVER =
   import.meta.env.VITE_WEBRTC_SIGNALING_URL || "http://localhost:3000";
 
-const ICE_SERVERS = {
+// ICE servers configuration - fetched from Azure Communication Services
+// Set to 'relay' to force TURN only, or 'all' (default) to allow host/srflx/relay
+const FORCE_RELAY = false;
+
+// Default ICE servers (fallback if fetch fails)
+const DEFAULT_ICE_SERVERS = {
   iceServers: [
     { urls: "stun:stun.l.google.com:19302" },
     { urls: "stun:stun1.l.google.com:19302" },
   ],
+  ...(FORCE_RELAY
+    ? { iceTransportPolicy: "relay" as RTCIceTransportPolicy }
+    : {}),
 };
 
 export default function VideoChat() {
@@ -57,6 +65,8 @@ export default function VideoChat() {
   const [videoEnabled, setVideoEnabled] = useState(true);
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [remoteSpeaking, setRemoteSpeaking] = useState<Set<string>>(new Set());
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const [iceServers, setIceServers] = useState<RTCConfiguration>(DEFAULT_ICE_SERVERS);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionsRef = useRef<Map<string, WebRTCConnection>>(new Map());
@@ -64,11 +74,51 @@ export default function VideoChat() {
   const localAnalyserRef = useRef<AnalyserNode | null>(null);
   const remoteAnalysersRef = useRef<Map<string, AnalyserNode>>(new Map());
 
+  // Add debug logging
+  const addDebug = (message: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    console.log(`[${timestamp}] ${message}`);
+    setDebugInfo((prev) => [...prev.slice(-20), `[${timestamp}] ${message}`]);
+  };
+
+  // Fetch TURN credentials from Azure Communication Services
+  const fetchTurnCredentials = async () => {
+    if (!user?.access_token) return;
+
+    try {
+      addDebug("🔄 Fetching TURN credentials from Azure...");
+      const response = await fetch(`${SIGNALING_SERVER}/api/turn-credentials`, {
+        headers: {
+          Authorization: `Bearer ${user.access_token}`,
+        },
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const config: RTCConfiguration = {
+          iceServers: data.iceServers,
+          ...(FORCE_RELAY ? { iceTransportPolicy: 'relay' as RTCIceTransportPolicy } : {}),
+        };
+        setIceServers(config);
+        addDebug(`✅ Got ${data.iceServers.length} ICE servers from Azure`);
+        console.log("Azure TURN credentials:", data.iceServers);
+      } else {
+        console.warn("Failed to fetch TURN credentials, using defaults");
+        addDebug("⚠️ Using default STUN servers (TURN fetch failed)");
+      }
+    } catch (error) {
+      console.error("Error fetching TURN credentials:", error);
+      addDebug("⚠️ Using default STUN servers (error)");
+    }
+  };
+
   // Update local video when stream changes or when we join the room
   useEffect(() => {
-    if (!localStream) return;
+    if (!localStream || !joined) return;
 
-    // Use a small delay to ensure ref is attached
+    addDebug(`🎥 Setting up local video element with stream ${localStream.id}`);
+
+    // Use a delay to ensure the video element is rendered (after joined becomes true)
     const timer = setTimeout(() => {
       if (localVideoRef.current && localStream) {
         console.log("Setting local video srcObject");
@@ -96,6 +146,18 @@ export default function VideoChat() {
 
         localVideoRef.current.srcObject = localStream;
 
+        // Force play the video
+        localVideoRef.current
+          .play()
+          .then(() => {
+            console.log("✅ Local video playing successfully");
+            addDebug("✅ Local video is playing");
+          })
+          .catch((err) => {
+            console.error("❌ Failed to play local video:", err);
+            addDebug(`❌ Failed to play local video: ${err.message}`);
+          });
+
         console.log("Video element after srcObject set:", {
           srcObject: localVideoRef.current.srcObject,
           videoWidth: localVideoRef.current.videoWidth,
@@ -103,9 +165,13 @@ export default function VideoChat() {
           readyState: localVideoRef.current.readyState,
         });
       } else {
-        console.error("❌ Local video ref is null!");
+        const msg = !localVideoRef.current
+          ? "❌ Local video ref is null!"
+          : "❌ Local stream is null!";
+        console.error(msg);
+        addDebug(msg);
       }
-    }, 100);
+    }, 200);
 
     return () => {
       clearTimeout(timer);
@@ -113,7 +179,7 @@ export default function VideoChat() {
         localAnalyserRef.current = null;
       }
     };
-  }, [localStream]);
+  }, [localStream, joined]);
 
   // Setup audio analyzer separately after a delay
   useEffect(() => {
@@ -238,6 +304,9 @@ export default function VideoChat() {
   // Initialize socket connection
   useEffect(() => {
     if (!user?.access_token) return;
+
+    // Fetch TURN credentials from Azure Communication Services
+    fetchTurnCredentials();
 
     // Parse the signaling server URL to extract base URL and path
     const getSocketConfig = () => {
@@ -452,6 +521,9 @@ export default function VideoChat() {
   }, [joined, localStream, participants.length, socket]);
 
   const createPeerConnection = async (socketId: string, initiator: boolean) => {
+    addDebug(
+      `🔗 Creating peer connection to ${socketId} (initiator: ${initiator})`
+    );
     console.log(
       "🔗 Creating peer connection for:",
       socketId,
@@ -464,22 +536,56 @@ export default function VideoChat() {
       return;
     }
 
-    const peerConnection = new RTCPeerConnection(ICE_SERVERS);
-    console.log("✅ RTCPeerConnection created");
+    const peerConnection = new RTCPeerConnection(iceServers);
+    console.log(
+      "✅ RTCPeerConnection created",
+      FORCE_RELAY ? "(TURN relay only)" : "(all candidates)"
+    );
+    addDebug(`🔧 ICE transport policy: ${FORCE_RELAY ? "relay only" : "all"}`);
+    addDebug(`🔧 Using ${iceServers.iceServers?.length || 0} ICE servers`);
+
+    // Log ICE gathering state changes
+    let iceGatheringTimeout: ReturnType<typeof setTimeout>;
+    peerConnection.onicegatheringstatechange = () => {
+      const state = peerConnection.iceGatheringState;
+      console.log("🧊 ICE gathering state:", state);
+      addDebug(`🧊 ICE gathering: ${state}`);
+
+      if (state === "gathering") {
+        // Set a timeout to detect if gathering stalls
+        iceGatheringTimeout = setTimeout(() => {
+          if (peerConnection.iceGatheringState === "gathering") {
+            console.error(
+              "⚠️ ICE gathering timeout - no candidates received after 10s"
+            );
+            addDebug(
+              "⚠️ ICE gathering timeout - TURN servers may be unreachable"
+            );
+          }
+        }, 10000);
+      } else if (state === "complete") {
+        clearTimeout(iceGatheringTimeout);
+        addDebug(`✅ ICE gathering complete`);
+      }
+    };
 
     // Add local stream tracks
     if (localStream) {
+      const trackCount = localStream.getTracks().length;
+      addDebug(`➕ Adding ${trackCount} local tracks to peer connection`);
       console.log("➕ Adding local tracks to peer connection");
       localStream.getTracks().forEach((track) => {
         console.log("  Adding track:", track.kind, "enabled:", track.enabled);
         peerConnection.addTrack(track, localStream);
       });
     } else {
+      addDebug("⚠️ No local stream to add tracks from!");
       console.warn("⚠️ No local stream available to add tracks");
     }
 
     // Handle incoming streams
     peerConnection.ontrack = (event) => {
+      addDebug(`📥 Received ${event.track.kind} track from ${socketId}`);
       console.log("📥 Received remote track from:", socketId);
       console.log("  Track kind:", event.track.kind);
       console.log("  Track enabled:", event.track.enabled);
@@ -491,14 +597,20 @@ export default function VideoChat() {
 
       const remoteStream = event.streams[0];
       if (remoteStream) {
+        addDebug(`✅ Setting remote stream for ${socketId}`);
         console.log("✅ Setting remote stream for participant:", socketId);
         setParticipants((prev) => {
           const updated = prev.map((p) => {
             if (p.socketId === socketId) {
               console.log("  Updating participant:", p.username, "with stream");
+
+              // Create a new MediaStream to force React re-render
+              // Clone the stream to ensure React detects the change
+              const streamToSet = new MediaStream(remoteStream.getTracks());
+
               // Setup audio analyzer for remote stream
-              setupRemoteAudioAnalyzer(remoteStream, p.id);
-              return { ...p, stream: remoteStream };
+              setupRemoteAudioAnalyzer(streamToSet, p.id);
+              return { ...p, stream: streamToSet };
             }
             return p;
           });
@@ -506,44 +618,119 @@ export default function VideoChat() {
           return updated;
         });
       } else {
+        addDebug(`❌ No remote stream in track event from ${socketId}`);
         console.error("❌ No remote stream in event");
       }
     };
 
     // Handle ICE candidates
+    let candidateCount = 0;
     peerConnection.onicecandidate = (event) => {
       if (event.candidate && socket) {
-        console.log("🧊 Sending ICE candidate to:", socketId);
+        candidateCount++;
+        const candidate = event.candidate;
+        console.log("🧊 Local ICE candidate #" + candidateCount + ":", {
+          type: candidate.type,
+          protocol: candidate.protocol,
+          address: candidate.address,
+          port: candidate.port,
+          relatedAddress: candidate.relatedAddress,
+          relatedPort: candidate.relatedPort,
+        });
+        addDebug(
+          `🧊 ICE candidate #${candidateCount}: ${candidate.type} (${candidate.protocol})`
+        );
+
         socket.emit("ice-candidate", {
           to: socketId,
           candidate: event.candidate,
         });
       } else if (!event.candidate) {
-        console.log("🧊 ICE gathering complete for:", socketId);
+        console.log(
+          "🧊 ICE gathering complete for:",
+          socketId,
+          "- Total candidates:",
+          candidateCount
+        );
+        addDebug(`🧊 ICE complete: ${candidateCount} candidates`);
+
+        if (candidateCount === 0) {
+          console.error(
+            "❌ No ICE candidates gathered - TURN servers unreachable!"
+          );
+          addDebug("❌ No ICE candidates - check TURN servers");
+        }
       }
     };
 
     // Handle connection state
     peerConnection.onconnectionstatechange = () => {
-      console.log(
-        "🔌 Connection state for",
-        socketId,
-        ":",
-        peerConnection.connectionState
-      );
-      if (peerConnection.connectionState === "failed") {
+      const state = peerConnection.connectionState;
+      console.log("🔌 Connection state for", socketId, ":", state);
+      addDebug(`🔌 Connection state: ${state}`);
+
+      if (state === "connected") {
+        addDebug(`✅ Peer connection established with ${socketId}`);
+
+        // Log which candidate pair was selected
+        peerConnection.getStats().then((stats) => {
+          stats.forEach((report) => {
+            if (
+              report.type === "candidate-pair" &&
+              report.state === "succeeded"
+            ) {
+              console.log("✅ Selected candidate pair:", report);
+
+              // Get local and remote candidate details
+              stats.forEach((candidateReport) => {
+                if (candidateReport.id === report.localCandidateId) {
+                  console.log("  Local candidate:", {
+                    type: candidateReport.candidateType,
+                    protocol: candidateReport.protocol,
+                    address: candidateReport.address,
+                    port: candidateReport.port,
+                  });
+                  addDebug(
+                    `📍 Local: ${candidateReport.candidateType} (${candidateReport.protocol})`
+                  );
+                }
+                if (candidateReport.id === report.remoteCandidateId) {
+                  console.log("  Remote candidate:", {
+                    type: candidateReport.candidateType,
+                    protocol: candidateReport.protocol,
+                    address: candidateReport.address,
+                    port: candidateReport.port,
+                  });
+                  addDebug(
+                    `📍 Remote: ${candidateReport.candidateType} (${candidateReport.protocol})`
+                  );
+                }
+              });
+            }
+          });
+        });
+      } else if (state === "failed") {
         console.error("❌ Connection failed for:", socketId);
+        addDebug(`❌ Connection FAILED for ${socketId}`);
+
+        // Log the ICE connection state for more details
+        console.error("   ICE state:", peerConnection.iceConnectionState);
+        console.error(
+          "   ICE gathering state:",
+          peerConnection.iceGatheringState
+        );
       }
     };
 
     // Handle ICE connection state
     peerConnection.oniceconnectionstatechange = () => {
-      console.log(
-        "🧊 ICE connection state for",
-        socketId,
-        ":",
-        peerConnection.iceConnectionState
-      );
+      const iceState = peerConnection.iceConnectionState;
+      console.log("🧊 ICE connection state for", socketId, ":", iceState);
+      addDebug(`🧊 ICE state: ${iceState}`);
+
+      if (iceState === "failed" || iceState === "disconnected") {
+        addDebug(`⚠️ ICE ${iceState} - may need TURN servers`);
+      }
     };
 
     peerConnectionsRef.current.set(socketId, { peerConnection, socketId });
@@ -665,25 +852,58 @@ export default function VideoChat() {
 
   const startLocalStream = async () => {
     try {
+      addDebug("📹 Requesting camera and microphone access...");
       console.log("Requesting media devices...");
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: true,
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          facingMode: "user",
+        },
         audio: true,
       });
 
-      console.log("Got local stream:", stream);
-      console.log("Video tracks:", stream.getVideoTracks());
-      console.log(
-        "Video track settings:",
-        stream.getVideoTracks()[0]?.getSettings()
+      addDebug(`✅ Got local stream: ${stream.id}`);
+      addDebug(
+        `Video tracks: ${stream.getVideoTracks().length}, Audio tracks: ${
+          stream.getAudioTracks().length
+        }`
       );
+
+      console.log("Got local stream:", stream);
+      console.log("Stream ID:", stream.id);
+      console.log("Stream active:", stream.active);
+      console.log("Video tracks:", stream.getVideoTracks());
       console.log("Audio tracks:", stream.getAudioTracks());
+
+      // Log detailed track info
+      stream.getVideoTracks().forEach((track, index) => {
+        console.log(`Video track ${index}:`, {
+          id: track.id,
+          label: track.label,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+          settings: track.getSettings(),
+        });
+      });
+
+      stream.getAudioTracks().forEach((track, index) => {
+        console.log(`Audio track ${index}:`, {
+          id: track.id,
+          label: track.label,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+        });
+      });
 
       // Just set the stream state, useEffect will handle the rest
       setLocalStream(stream);
 
       return stream;
     } catch (error) {
+      addDebug(`❌ Failed to access media: ${error}`);
       console.error("Error accessing media devices:", error);
       alert("Could not access camera/microphone. Please check permissions.");
       throw error;
@@ -924,6 +1144,22 @@ export default function VideoChat() {
               </div>
             </div>
           </div>
+
+          {/* Debug Info */}
+          {joined && debugInfo.length > 0 && (
+            <details className="rounded-2xl border border-yellow-500/20 bg-black/40 p-4 backdrop-blur">
+              <summary className="cursor-pointer text-xs uppercase tracking-[0.3em] text-yellow-500">
+                Debug Log ({debugInfo.length} entries)
+              </summary>
+              <div className="mt-4 max-h-48 overflow-y-auto space-y-1">
+                {debugInfo.map((msg, i) => (
+                  <div key={i} className="text-xs font-mono text-slate-400">
+                    {msg}
+                  </div>
+                ))}
+              </div>
+            </details>
+          )}
         </header>
 
         <main className="mx-auto mt-12 w-full max-w-6xl">
@@ -1263,10 +1499,35 @@ function RemoteVideo({
           kind: t.kind,
           enabled: t.enabled,
           readyState: t.readyState,
+          muted: t.muted,
         }))
       );
 
+      // Log detailed video track info
+      const videoTracks = participant.stream.getVideoTracks();
+      console.log(`  Found ${videoTracks.length} video tracks`);
+      videoTracks.forEach((track, i) => {
+        console.log(`  Video track ${i}:`, {
+          id: track.id,
+          label: track.label,
+          enabled: track.enabled,
+          muted: track.muted,
+          readyState: track.readyState,
+          settings: track.getSettings(),
+        });
+      });
+
       videoRef.current.srcObject = participant.stream;
+
+      // Force video tracks to be enabled
+      videoTracks.forEach((track) => {
+        if (!track.enabled) {
+          console.warn(
+            `  Enabling disabled video track for ${participant.username}`
+          );
+          track.enabled = true;
+        }
+      });
 
       // Ensure remote video plays
       const playPromise = videoRef.current.play();
@@ -1277,6 +1538,10 @@ function RemoteVideo({
               "\u2705 Remote video playing for:",
               participant.username
             );
+            console.log("  Video element dimensions:", {
+              videoWidth: videoRef.current?.videoWidth,
+              videoHeight: videoRef.current?.videoHeight,
+            });
           })
           .catch((err) => {
             console.error(
@@ -1313,10 +1578,32 @@ function RemoteVideo({
             "\ud83d\udcf9 Remote video metadata loaded for:",
             participant.username
           );
-          console.log("Video dimensions:", {
-            videoWidth: e.currentTarget.videoWidth,
-            videoHeight: e.currentTarget.videoHeight,
+          const video = e.currentTarget;
+          console.log("Video element state:", {
+            videoWidth: video.videoWidth,
+            videoHeight: video.videoHeight,
+            readyState: video.readyState,
+            paused: video.paused,
+            ended: video.ended,
           });
+
+          const stream = video.srcObject as MediaStream;
+          if (stream) {
+            console.log("Stream state:", {
+              id: stream.id,
+              active: stream.active,
+              videoTracks: stream.getVideoTracks().length,
+              audioTracks: stream.getAudioTracks().length,
+            });
+
+            stream.getVideoTracks().forEach((track, i) => {
+              console.log(`Video track ${i} at metadata:`, {
+                enabled: track.enabled,
+                muted: track.muted,
+                readyState: track.readyState,
+              });
+            });
+          }
         }}
         onCanPlay={() =>
           console.log(
