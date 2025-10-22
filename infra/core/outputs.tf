@@ -250,20 +250,3 @@ output "webrtc_signaling_service_fqdn" {
   description = "FQDN of the WebRTC Signaling Container App"
   value       = azurerm_container_app.webrtc_signaling_service.ingress[0].fqdn
 }
-
-# Azure Communication Services Outputs
-output "communication_service_name" {
-  description = "Name of the Azure Communication Service"
-  value       = azurerm_communication_service.webrtc.name
-}
-
-output "communication_service_connection_string" {
-  description = "Primary connection string for Azure Communication Service (contains TURN credentials)"
-  value       = azurerm_communication_service.webrtc.primary_connection_string
-  sensitive   = true
-}
-
-output "communication_service_endpoint" {
-  description = "Endpoint URL for Azure Communication Service"
-  value       = "https://${azurerm_communication_service.webrtc.name}.communication.azure.com"
-}
