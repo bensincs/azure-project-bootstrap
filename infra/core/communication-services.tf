@@ -4,19 +4,5 @@ resource "azurerm_communication_service" "webrtc" {
   resource_group_name = azurerm_resource_group.main.name
   data_location       = "United States" # Options: United States, Europe, Asia Pacific, United Kingdom, Australia
 
-  tags = merge(var.tags, {
-    Environment = var.environment
-    ManagedBy   = "Terraform"
-    Service     = "WebRTC"
-  })
-}
-
-# Output the connection string (mark as sensitive)
-output "communication_service_connection_string" {
-  value     = azurerm_communication_service.webrtc.primary_connection_string
-  sensitive = true
-}
-
-output "communication_service_endpoint" {
-  value = azurerm_communication_service.webrtc.primary_key
+  tags = local.common_tags
 }
