@@ -54,6 +54,7 @@ docker push "$IMAGE_TAG"
 
 echo "📝 Reading environment variables from .env file..."
 ENV_VARS=""
+SECRETS=""
 if [ -f "$SCRIPT_DIR/.env" ]; then
   # Read .env file and convert to --set-env-vars format
   while IFS='=' read -r key value; do
@@ -64,6 +65,7 @@ if [ -f "$SCRIPT_DIR/.env" ]; then
     value="${value#\"}"
     # Remove trailing whitespace/comments
     value=$(echo "$value" | sed 's/[[:space:]]*#.*//')
+    
     # Add to env vars string
     if [ -n "$ENV_VARS" ]; then
       ENV_VARS="${ENV_VARS} ${key}=${value}"

@@ -246,11 +246,6 @@ resource "azurerm_container_app" "webrtc_signaling_service" {
     value = azurerm_container_registry.core.admin_password
   }
 
-  secret {
-    name  = "azure-communication-connection-string"
-    value = azurerm_communication_service.webrtc.primary_connection_string
-  }
-
   template {
     container {
       name = "webrtc-signaling-service"
@@ -283,10 +278,6 @@ resource "azurerm_container_app" "webrtc_signaling_service" {
       env {
         name  = "BASE_PATH"
         value = "/wrtc-api"
-      }
-      env {
-        name        = "AZURE_COMMUNICATION_CONNECTION_STRING"
-        secret_name = "azure-communication-connection-string"
       }
     }
 

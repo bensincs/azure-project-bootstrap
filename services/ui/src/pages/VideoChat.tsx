@@ -66,8 +66,6 @@ export default function VideoChat() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [remoteSpeaking, setRemoteSpeaking] = useState<Set<string>>(new Set());
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
-  const [iceServers, setIceServers] =
-    useState<RTCConfiguration>(DEFAULT_ICE_SERVERS);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionsRef = useRef<Map<string, WebRTCConnection>>(new Map());
@@ -80,39 +78,6 @@ export default function VideoChat() {
     const timestamp = new Date().toLocaleTimeString();
     console.log(`[${timestamp}] ${message}`);
     setDebugInfo((prev) => [...prev.slice(-20), `[${timestamp}] ${message}`]);
-  };
-
-  // Fetch TURN credentials from Azure Communication Services
-  const fetchTurnCredentials = async () => {
-    if (!user?.access_token) return;
-
-    try {
-      addDebug("🔄 Fetching TURN credentials from Azure...");
-      const response = await fetch(`${SIGNALING_SERVER}/api/turn-credentials`, {
-        headers: {
-          Authorization: `Bearer ${user.access_token}`,
-        },
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        const config: RTCConfiguration = {
-          iceServers: data.iceServers,
-          ...(FORCE_RELAY
-            ? { iceTransportPolicy: "relay" as RTCIceTransportPolicy }
-            : {}),
-        };
-        setIceServers(config);
-        addDebug(`✅ Got ${data.iceServers.length} ICE servers from Azure`);
-        console.log("Azure TURN credentials:", data.iceServers);
-      } else {
-        console.warn("Failed to fetch TURN credentials, using defaults");
-        addDebug("⚠️ Using default STUN servers (TURN fetch failed)");
-      }
-    } catch (error) {
-      console.error("Error fetching TURN credentials:", error);
-      addDebug("⚠️ Using default STUN servers (error)");
-    }
   };
 
   // Update local video when stream changes or when we join the room
@@ -307,9 +272,6 @@ export default function VideoChat() {
   // Initialize socket connection
   useEffect(() => {
     if (!user?.access_token) return;
-
-    // Fetch TURN credentials from Azure Communication Services
-    fetchTurnCredentials();
 
     // Parse the signaling server URL to extract base URL and path
     const getSocketConfig = () => {
@@ -539,13 +501,9 @@ export default function VideoChat() {
       return;
     }
 
-    const peerConnection = new RTCPeerConnection(iceServers);
-    console.log(
-      "✅ RTCPeerConnection created",
-      FORCE_RELAY ? "(TURN relay only)" : "(all candidates)"
-    );
-    addDebug(`🔧 ICE transport policy: ${FORCE_RELAY ? "relay only" : "all"}`);
-    addDebug(`🔧 Using ${iceServers.iceServers?.length || 0} ICE servers`);
+    const peerConnection = new RTCPeerConnection(DEFAULT_ICE_SERVERS);
+    console.log("✅ RTCPeerConnection created");
+    addDebug(`🔧 Using ${DEFAULT_ICE_SERVERS.iceServers?.length || 0} ICE servers`);
 
     // Log ICE gathering state changes
     let iceGatheringTimeout: ReturnType<typeof setTimeout>;
