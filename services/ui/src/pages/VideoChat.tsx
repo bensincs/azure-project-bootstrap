@@ -66,7 +66,8 @@ export default function VideoChat() {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [remoteSpeaking, setRemoteSpeaking] = useState<Set<string>>(new Set());
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
-  const [iceServers, setIceServers] = useState<RTCConfiguration>(DEFAULT_ICE_SERVERS);
+  const [iceServers, setIceServers] =
+    useState<RTCConfiguration>(DEFAULT_ICE_SERVERS);
 
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const peerConnectionsRef = useRef<Map<string, WebRTCConnection>>(new Map());
@@ -97,7 +98,9 @@ export default function VideoChat() {
         const data = await response.json();
         const config: RTCConfiguration = {
           iceServers: data.iceServers,
-          ...(FORCE_RELAY ? { iceTransportPolicy: 'relay' as RTCIceTransportPolicy } : {}),
+          ...(FORCE_RELAY
+            ? { iceTransportPolicy: "relay" as RTCIceTransportPolicy }
+            : {}),
         };
         setIceServers(config);
         addDebug(`✅ Got ${data.iceServers.length} ICE servers from Azure`);

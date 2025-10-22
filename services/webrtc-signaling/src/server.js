@@ -202,48 +202,54 @@ app.get(`${BASE_PATH}/health`, (req, res) => {
 });
 
 // Get TURN credentials from Azure Communication Services
-app.get(`${BASE_PATH}/api/turn-credentials`, authenticateJWT, async (req, res) => {
-  const connectionString = process.env.AZURE_COMMUNICATION_CONNECTION_STRING;
-  
-  if (!connectionString) {
-    console.error("❌ AZURE_COMMUNICATION_CONNECTION_STRING not configured");
-    return res.status(500).json({ 
-      error: "TURN credentials not available",
-      message: "Azure Communication Services not configured" 
-    });
-  }
+app.get(
+  `${BASE_PATH}/api/turn-credentials`,
+  authenticateJWT,
+  async (req, res) => {
+    const connectionString = process.env.AZURE_COMMUNICATION_CONNECTION_STRING;
 
-  try {
-    const relayClient = new CommunicationRelayClient(connectionString);
-    const config = await relayClient.getRelayConfiguration();
-    
-    // Convert Azure Communication Services format to WebRTC RTCIceServer format
-    const iceServers = [
-      // Include public STUN servers
-      { urls: "stun:stun.l.google.com:19302" },
-      { urls: "stun:stun1.l.google.com:19302" },
-      // Azure Communication Services TURN servers
-      ...config.iceServers.map(server => ({
-        urls: server.urls,
-        username: server.username,
-        credential: server.credential,
-      }))
-    ];
+    if (!connectionString) {
+      console.error("❌ AZURE_COMMUNICATION_CONNECTION_STRING not configured");
+      return res.status(500).json({
+        error: "TURN credentials not available",
+        message: "Azure Communication Services not configured",
+      });
+    }
 
-    console.log(`✅ Fetched TURN credentials for user ${req.user.id} (expires: ${config.expiresOn})`);
-    
-    res.json({
-      iceServers,
-      expiresOn: config.expiresOn,
-    });
-  } catch (error) {
-    console.error("❌ Failed to fetch TURN credentials:", error);
-    res.status(500).json({ 
-      error: "Failed to fetch TURN credentials",
-      message: error.message 
-    });
+    try {
+      const relayClient = new CommunicationRelayClient(connectionString);
+      const config = await relayClient.getRelayConfiguration();
+
+      // Convert Azure Communication Services format to WebRTC RTCIceServer format
+      const iceServers = [
+        // Include public STUN servers
+        { urls: "stun:stun.l.google.com:19302" },
+        { urls: "stun:stun1.l.google.com:19302" },
+        // Azure Communication Services TURN servers
+        ...config.iceServers.map((server) => ({
+          urls: server.urls,
+          username: server.username,
+          credential: server.credential,
+        })),
+      ];
+
+      console.log(
+        `✅ Fetched TURN credentials for user ${req.user.id} (expires: ${config.expiresOn})`
+      );
+
+      res.json({
+        iceServers,
+        expiresOn: config.expiresOn,
+      });
+    } catch (error) {
+      console.error("❌ Failed to fetch TURN credentials:", error);
+      res.status(500).json({
+        error: "Failed to fetch TURN credentials",
+        message: error.message,
+      });
+    }
   }
-});
+);
 
 app.get(`${BASE_PATH}/api/rooms`, authenticateJWT, (req, res) => {
   const roomList = Array.from(rooms.values()).map((room) => ({
