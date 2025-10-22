@@ -188,7 +188,7 @@ output "private_dns_zone_acr" {
 }
 
 # Azure AD App Registration Outputs
-output "azure_ad_application_id" {
+output "" {
   description = "Client ID of the Azure AD App Registration"
   value       = azuread_application.main.client_id
 }

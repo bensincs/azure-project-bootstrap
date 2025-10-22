@@ -26,8 +26,8 @@ echo "📋 Reading Terraform outputs..."
 APP_GATEWAY_IP=$(terraform output -raw app_gateway_public_ip 2>/dev/null || echo "")
 UI_SERVICE_FQDN=$(terraform output -raw ui_service_fqdn 2>/dev/null || echo "")
 ENVIRONMENT=$(terraform output -raw environment 2>/dev/null || echo "dev")
-AZURE_TENANT_ID=$(terraform output -raw azure_tenant_id 2>/dev/null || echo "")
-AZURE_CLIENT_ID=$(terraform output -raw azure_client_id 2>/dev/null || echo "")
+AZURE_TENANT_ID=$(terraform output -raw azure_ad_tenant_id 2>/dev/null || echo "")
+AZURE_CLIENT_ID=$(terraform output -raw azure_ad_application_id 2>/dev/null || echo "")
 
 # Build allowed origins list
 ALLOWED_ORIGINS=""
